@@ -15,6 +15,9 @@ from app.api.profile import router as profile_router
 from app.api.history import router as history_router
 from app.api.billing import router as billing_router
 from app.api.admin import router as admin_router
+from app.api.quote import router as quote_router
+from app.api.client import router as client_router
+from app.api.address_book import router as address_book_router
 
 
 @asynccontextmanager
@@ -50,6 +53,9 @@ app.include_router(profile_router)
 app.include_router(history_router)
 app.include_router(billing_router)
 app.include_router(admin_router)
+app.include_router(quote_router)
+app.include_router(client_router)
+app.include_router(address_book_router)
 
 
 @app.get("/health")

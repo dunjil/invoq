@@ -9,7 +9,8 @@ import toast from "react-hot-toast";
 import {
   Mic, MicOff, Download, FileText, CheckCircle2,
   ChevronDown, User, LogOut, Building, Crown, Clock,
-  MessageSquare, Wand2, ArrowRight, Eye,
+  MessageSquare, Wand2, ArrowRight, Eye, CreditCard, PenTool,
+  AlertCircle, ShieldCheck, Zap
 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -176,6 +177,7 @@ function AnimatedInvoice() {
    Visitor types a description, sees extracted fields live
    ═══════════════════════════════════════════════════════════ */
 function InteractiveDemo() {
+  const [docType, setDocType] = useState<"invoice" | "quote">("invoice");
   const [input, setInput] = useState("");
   const [extracted, setExtracted] = useState<any>(null);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -239,11 +241,28 @@ function InteractiveDemo() {
         <p className="text-xs uppercase tracking-[0.15em] mb-3" style={{ color: "#8A8880", fontFamily: "var(--font-body)" }}>
           Try it now
         </p>
+
+        {/* Toggle between Quote and Invoice */}
+        <div className="flex gap-2 mb-4 p-1 rounded-lg w-fit" style={{ background: "#F5F3EE" }}>
+          <button
+            onClick={() => setDocType("invoice")}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${docType === "invoice" ? "bg-white shadow-sm text-[#1A1A18]" : "text-[#6B6B63] hover:text-[#1A1A18]"}`}
+          >
+            Invoice
+          </button>
+          <button
+            onClick={() => setDocType("quote")}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${docType === "quote" ? "bg-white shadow-sm text-[#1A1A18]" : "text-[#6B6B63] hover:text-[#1A1A18]"}`}
+          >
+            Quote
+          </button>
+        </div>
+
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Designed a logo for Maple Coffee Co., 3 revisions, $850, due in 15 days"
-          rows={4}
+          placeholder={docType === "invoice" ? "Website redesign for Maple Coffee Co. — 5 pages, brand alignment, mobile responsive, 3 revision rounds, delivery in 4 weeks, £2,400" : "Proposal: Website redesign for Maple Coffee Co. — 5 pages, brand alignment, mobile responsive, 3 revision rounds, delivery in 4 weeks, £2,400"}
+          rows={5}
           disabled={isTranscribing}
           className="resize-none text-[15px] bg-white border-[#E8E6E0] placeholder:text-[#C5C3BC]"
         />
@@ -279,7 +298,9 @@ function InteractiveDemo() {
           <div className="p-6 animate-fade-in" style={{ fontFamily: "var(--font-body)" }}>
             <div className="flex justify-between items-start mb-5">
               <div>
-                <p className="text-[11px] font-semibold tracking-[0.2em] uppercase" style={{ color: "#D4A017" }}>Invoice</p>
+                <p className="text-[11px] font-semibold tracking-[0.2em] uppercase" style={{ color: "#D4A017" }}>
+                  {docType === "invoice" ? "Invoice" : "Quote"}
+                </p>
               </div>
             </div>
 
@@ -328,7 +349,7 @@ function InteractiveDemo() {
             <div className="mt-6 pt-4" style={{ borderTop: "1px solid #F5F3EE" }}>
               <Link href="/create">
                 <Button className="w-full h-10 bg-[#D4A017] hover:bg-[#B8860B] text-white font-medium text-sm">
-                  Get your invoice <ArrowRight className="h-4 w-4 ml-2" />
+                  Get your {docType} <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </Link>
             </div>
@@ -336,7 +357,7 @@ function InteractiveDemo() {
         ) : (
           <div className="flex flex-col items-center justify-center h-full min-h-[280px] p-8 text-center">
             <FileText className="h-8 w-8 mb-3" style={{ color: "#E8E6E0" }} />
-            <p className="text-sm" style={{ color: "#8A8880" }}>Your invoice will appear here</p>
+            <p className="text-sm" style={{ color: "#8A8880" }}>Your {docType} will appear here</p>
             <p className="text-xs mt-1" style={{ color: "#D5D3CC" }}>Type a description and click Invoq it</p>
           </div>
         )}
@@ -403,22 +424,21 @@ export default function LandingPage() {
             {/* Left — Copy */}
             <div className="animate-fade-in">
               <h2 className="text-[2.6rem] sm:text-[3.5rem] lg:text-[4.2rem] leading-[1.05] tracking-tight" style={{ fontFamily: "var(--font-heading)", fontWeight: 300 }}>
-                Your invoice,<br />
-                <em className="not-italic" style={{ fontStyle: "italic" }}>in 60 seconds.</em>
+                Quote it.<br />
+                Invoice it.<br />
+                Track it.<br />
+                <em className="not-italic" style={{ fontStyle: "italic", color: "#D4A017" }}>Get paid.</em>
               </h2>
               <p className="text-base sm:text-lg mt-6 sm:mt-8 leading-relaxed max-w-sm" style={{ color: "#4A4A45", fontFamily: "var(--font-body)" }}>
-                Describe what you did. We handle the rest.
+                Start with a quote or go straight to an invoice — Invoq handles both. The complete financial workflow for freelancers.
               </p>
               <div className="mt-8 sm:mt-10">
                 <Link href="/create">
-                  <Button size="lg" className="h-12 sm:h-[52px] px-6 sm:px-8 text-sm sm:text-[15px] font-medium shadow-sm w-full sm:w-auto" style={{ background: "#D4A017", color: "#fff" }}>
-                    Create your first invoice free
+                  <Button size="lg" className="h-12 sm:h-[52px] px-6 sm:px-8 text-sm sm:text-[15px] font-medium shadow-sm w-full sm:w-auto hover:scale-[1.02] transition-transform" style={{ background: "#D4A017", color: "#fff" }}>
+                    Start quoting and invoicing
                   </Button>
                 </Link>
               </div>
-              <p className="text-[13px] mt-4" style={{ color: "#8A8880" }}>
-                No credit card required. 5 free invoices every month.
-              </p>
             </div>
 
             {/* Right — Animated Invoice */}
@@ -431,46 +451,81 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══════════════   SECTION 2 — HOW IT WORKS   ══════════ */}
-      <section className="py-16 sm:py-28" style={{ borderTop: "1px solid #E8E6E0" }}>
-        <div className="max-w-4xl mx-auto px-5 sm:px-6">
-          <h2 className="text-center text-3xl sm:text-4xl tracking-tight mb-10 sm:mb-16" style={{ fontFamily: "var(--font-heading)", fontWeight: 400 }}>
-            How it works
+      {/* ══════════════   SECTION 2 — THE PROBLEM   ══════════ */}
+      <section className="py-16 sm:py-28" style={{ borderTop: "1px solid #E8E6E0", background: "#FFFFFF" }}>
+        <div className="max-w-5xl mx-auto px-5 sm:px-6">
+          <h2 className="text-center text-3xl sm:text-4xl tracking-tight mb-4" style={{ fontFamily: "var(--font-heading)", fontWeight: 400 }}>
+            Freelancing shouldn&apos;t feel like chasing.
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 sm:gap-14">
-            {[
-              {
-                icon: MessageSquare,
-                title: "Speak or type",
-                desc: "Tell Invoq what you did in plain language. Voice note or text, your choice.",
-              },
-              {
-                icon: Eye,
-                title: "Review",
-                desc: "We extract every detail. You confirm before anything is generated.",
-              },
-              {
-                icon: Download,
-                title: "Download",
-                desc: "Professional PDF, ready to send. Signed, branded, done.",
-              },
-            ].map((step, i) => (
-              <div key={i} className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-5" style={{ border: "1px solid #E8E6E0" }}>
-                  <step.icon className="h-5 w-5" style={{ color: "#D4A017" }} />
-                </div>
-                <h3 className="text-[22px] mb-2" style={{ fontFamily: "var(--font-heading)", fontWeight: 600 }}>{step.title}</h3>
-                <p className="text-sm leading-relaxed max-w-[240px] mx-auto" style={{ color: "#4A4A45" }}>{step.desc}</p>
-              </div>
-            ))}
+          <p className="text-center text-sm sm:text-base leading-relaxed max-w-2xl mx-auto mb-12 sm:mb-16" style={{ color: "#6B6B63" }}>
+            The work is the easy part. It&apos;s the silence after sending a quote, the awkward follow-ups, and the panic at tax time that ruins the day.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-8 rounded-xl ring-1 ring-[#E8E6E0] bg-[#FAF9F6]">
+              <Eye className="h-6 w-6 mb-5" style={{ color: "#D4A017" }} />
+              <h3 className="text-lg font-medium mb-3">Sent a quote. Heard nothing.</h3>
+              <p className="text-sm leading-relaxed" style={{ color: "#6B6B63" }}>
+                You attached a PDF. Did they open it? Will they reply? You wait five days then send an awkward email.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-xl ring-1 ring-[#E8E6E0] bg-[#FAF9F6]">
+              <AlertCircle className="h-6 w-6 mb-5" style={{ color: "#D4A017" }} />
+              <h3 className="text-lg font-medium mb-3">Got a WhatsApp yes. No record.</h3>
+              <p className="text-sm leading-relaxed" style={{ color: "#6B6B63" }}>
+                The scope was verbally agreed. Three weeks later, they ask for extra features because there was no signed paper trail.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-xl ring-1 ring-[#E8E6E0] bg-[#FAF9F6]">
+              <PenTool className="h-6 w-6 mb-5" style={{ color: "#D4A017" }} />
+              <h3 className="text-lg font-medium mb-3">Created the invoice from scratch. Again.</h3>
+              <p className="text-sm leading-relaxed" style={{ color: "#6B6B63" }}>
+                You already typed all the project details when quoting. Now you have to open a separate tool and do it all over again.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ══════════════   SECTION 3 — THE DEMO   ══════════════ */}
+      {/* ══════════════   SECTION 3 — TWO PATHS   ══════════ */}
+      <section className="py-16 sm:py-28" style={{ borderTop: "1px solid #E8E6E0" }}>
+        <div className="max-w-4xl mx-auto px-5 sm:px-6">
+          <h2 className="text-center text-3xl sm:text-4xl tracking-tight mb-10 sm:mb-16" style={{ fontFamily: "var(--font-heading)", fontWeight: 400 }}>
+            Two paths. One unbroken flow.
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-16 relative">
+            <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+              <ArrowRight className="h-8 w-8 text-[#E8E6E0]" />
+            </div>
+
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-6" style={{ background: "#F5F3EE", border: "1px solid #E8E6E0" }}>
+                <ShieldCheck className="h-6 w-6" style={{ color: "#4A7C59" }} />
+              </div>
+              <h3 className="text-[22px] mb-3" style={{ fontFamily: "var(--font-heading)", fontWeight: 600 }}>Start with a Quote</h3>
+              <p className="text-sm leading-relaxed max-w-[280px] mx-auto mb-6" style={{ color: "#4A4A45" }}>
+                For new clients and complex jobs. Send a tracked quote, get a formal signature, and auto-convert to an invoice instantly.
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-6" style={{ background: "#F5F3EE", border: "1px solid #E8E6E0" }}>
+                <Zap className="h-6 w-6" style={{ color: "#D4A017" }} />
+              </div>
+              <h3 className="text-[22px] mb-3" style={{ fontFamily: "var(--font-heading)", fontWeight: 600 }}>Start with an Invoice</h3>
+              <p className="text-sm leading-relaxed max-w-[280px] mx-auto mb-6" style={{ color: "#4A4A45" }}>
+                For trusted clients and agreed work. Generate a branded invoice in 60 seconds and let our automated reminders chase payment.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════   SECTION 4 — THE DEMO   ══════════════ */}
       <section className="py-16 sm:py-28 relative" style={{
         borderTop: "1px solid #E8E6E0",
-        borderBottom: "1px solid #E8E6E0",
         background: "#F7F6F2",
         backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E\")",
       }}>
@@ -480,22 +535,61 @@ export default function LandingPage() {
               Try it yourself
             </h2>
             <p className="text-sm sm:text-base" style={{ color: "#4A4A45" }}>
-              No account needed. Describe your work and watch the invoice appear.
+              Toggle between a Quote or Invoice. Speak or type your request. Watch it build live.
             </p>
           </div>
           <InteractiveDemo />
         </div>
       </section>
 
-      {/* ══════════════   SECTION 4 — SOCIAL PROOF (coming soon) ══════════
-      <section className="py-16 sm:py-28">
-        <div className="max-w-4xl mx-auto px-5 sm:px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-            ...testimonials...
+      {/* ══════════════   SECTION 5 — SOCIAL PROOF ══════════ */}
+      <section className="py-16 sm:py-28" style={{ borderTop: "1px solid #E8E6E0", background: "#FFFFFF" }}>
+        <div className="max-w-5xl mx-auto px-5 sm:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-8 rounded-xl ring-1 ring-[#E8E6E0] bg-[#FAF9F6]">
+              <div className="flex text-[#D4A017] mb-4">{"★★★★★"}</div>
+              <p className="text-sm leading-relaxed mb-6 italic" style={{ color: "#4A4A45" }}>
+                "I use the Quote path for every new project. When the client approves, hitting one button to turn it into an invoice with zero re-entry feels like magic."
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#E8E6E0]" />
+                <div>
+                  <p className="text-sm font-medium">Elena R.</p>
+                  <p className="text-xs text-[#8A8880]">Brand Designer</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 rounded-xl ring-1 ring-[#E8E6E0] bg-[#FAF9F6]">
+              <div className="flex text-[#D4A017] mb-4">{"★★★★★"}</div>
+              <p className="text-sm leading-relaxed mb-6 italic" style={{ color: "#4A4A45" }}>
+                "My clients are all long-term retainers. I just dictate a voice note, Invoq builds the invoice, and the automatic reminders chase the payments so I don't have to."
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#E8E6E0]" />
+                <div>
+                  <p className="text-sm font-medium">Marcus T.</p>
+                  <p className="text-xs text-[#8A8880]">Marketing Consultant</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 rounded-xl ring-1 ring-[#E8E6E0] bg-[#FAF9F6]">
+              <div className="flex text-[#D4A017] mb-4">{"★★★★★"}</div>
+              <p className="text-sm leading-relaxed mb-6 italic" style={{ color: "#4A4A45" }}>
+                "Seeing exactly when a client opened my quote completely changes the follow-up conversation. The tax ledger in the background is incredibly helpful too."
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#E8E6E0]" />
+                <div>
+                  <p className="text-sm font-medium">Sarah Jenkins</p>
+                  <p className="text-xs text-[#8A8880]">Freelance Photographer</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
-      ══════════════════════════════════════════════════════════ */}
 
       {/* ══════════════   SECTION 5 — PRICING   ══════════════ */}
       <section id="pricing" className="py-16 sm:py-28" style={{ borderTop: "1px solid #E8E6E0", background: "#FFFFFF" }}>
@@ -576,24 +670,21 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══════════════   SECTION 6 — THE CLOSE   ══════════════ */}
+      {/* ══════════════   SECTION 7 — THE CLOSE   ══════════════ */}
       <section className="py-16 sm:py-28" style={{ borderTop: "1px solid #E8E6E0" }}>
         <div className="max-w-2xl mx-auto px-5 sm:px-6 text-center">
           <h2 className="text-[2.2rem] sm:text-5xl leading-[1.1] tracking-tight mb-6" style={{ fontFamily: "var(--font-heading)", fontWeight: 300 }}>
             Stop chasing.<br />
-            <em style={{ fontStyle: "italic" }}>Start getting paid.</em>
+            <em style={{ fontStyle: "italic", color: "#D4A017" }}>Start knowing.</em>
           </h2>
           <p className="text-base leading-relaxed mb-10 max-w-md mx-auto" style={{ color: "#4A4A45" }}>
-            Every minute you spend formatting invoices is a minute you&apos;re not spending on the work that actually earns you money. Invoq gives you that time back.
+            Every stage of the job visible. From approved scope to confirmed payment and estimated taxes. Get your time back.
           </p>
           <Link href="/create">
-            <Button size="lg" className="h-12 sm:h-[52px] px-6 sm:px-8 text-sm sm:text-[15px] font-medium shadow-sm w-full sm:w-auto" style={{ background: "#D4A017", color: "#fff" }}>
-              Create your first invoice free
+            <Button size="lg" className="h-12 sm:h-[52px] px-6 sm:px-8 text-sm sm:text-[15px] font-medium shadow-sm w-full sm:w-auto hover:bg-[#B8860B] transition-colors" style={{ background: "#D4A017", color: "#fff" }}>
+              Get yours
             </Button>
           </Link>
-          <p className="text-[13px] mt-4" style={{ color: "#8A8880" }}>
-            No credit card required. 5 free invoices every month.
-          </p>
         </div>
       </section>
 

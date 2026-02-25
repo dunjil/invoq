@@ -3,6 +3,7 @@
 import os
 import re
 import uuid
+from datetime import datetime
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,8 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.session import get_session
-from app.db.models import User, Invoice as InvoiceModel
-from app.api.deps import get_optional_user
+from app.db.models import User, Invoice as InvoiceModel, InvoiceComment, InvoiceLineItem
+from app.api.deps import get_optional_user, get_current_user
+from sqlalchemy.future import select
+from sqlalchemy import delete
 from app.services.usage import check_usage, record_usage, should_watermark
 
 router = APIRouter(prefix="/api/invoice", tags=["invoice"])
@@ -57,7 +60,8 @@ class WatermarkConfig(BaseModel):
 
 class InvoiceRequest(BaseModel):
     title: str = Field(default="INVOICE", max_length=50)
-    invoice_number: str = Field(..., max_length=50)
+    invoice_number: Optional[str] = Field(default=None, max_length=50)
+    quote_number: Optional[str] = Field(default=None, max_length=50)
     invoice_date: str
     due_date: Optional[str] = None
 
@@ -90,6 +94,8 @@ class InvoiceResponse(BaseModel):
     total: Optional[float] = None
     subtotal: Optional[float] = None
     tax_total: Optional[float] = None
+    tracked_link_token: Optional[str] = None
+    invoice_id: Optional[str] = None
 
 
 # ── Currency names ───────────────────────────────────────────────────────────
@@ -303,7 +309,7 @@ def generate_invoice_html(data: InvoiceRequest) -> tuple[str, float, float, floa
                 <div style="text-align: right;">
                     <h1 style="margin: 0; color: {data.primary_color}; font-size: 28px; font-weight: 300;">{data.title.upper()}</h1>
                     <div style="margin-top: 8px; color: #666; font-size: 12px;">
-                        <p style="margin: 3px 0;"><strong>Invoice #:</strong> {data.invoice_number}</p>
+                        <p style="margin: 3px 0;"><strong>{ "Quote" if data.title.upper() == "QUOTE" else "Invoice" } #:</strong> {data.quote_number or data.invoice_number or 'N/A'}</p>
                         <p style="margin: 3px 0;"><strong>Date:</strong> {data.invoice_date}</p>
                         {f'<p style="margin: 3px 0;"><strong>Due Date:</strong> {data.due_date}</p>' if data.due_date else ''}
                     </div>
@@ -429,9 +435,27 @@ async def generate_invoice(
                 total=total,
                 notes=data.notes,
                 primary_color=data.primary_color,
+                signature_data=data.signature_data,
+                client_signature_data=data.client_signature_data,
                 pdf_filename=filename,
+                status="sent",
+                sent_at=datetime.utcnow()
             )
             session.add(invoice_record)
+            await session.commit()
+            await session.refresh(invoice_record)
+
+            # Copy line items for structured data tracking
+            for item in data.items:
+                inv_item = InvoiceLineItem(
+                    invoice_id=invoice_record.id,
+                    description=item.description,
+                    quantity=item.quantity,
+                    unit_price=item.unit_price,
+                    tax_rate=item.tax_rate,
+                    total=item.quantity * item.unit_price
+                )
+                session.add(inv_item)
             await session.commit()
 
         return InvoiceResponse(
@@ -441,6 +465,8 @@ async def generate_invoice(
             subtotal=subtotal,
             tax_total=tax_total,
             total=total,
+            tracked_link_token=invoice_record.tracked_link_token if user else None,
+            invoice_id=invoice_record.id if user else None,
         )
 
     except Exception as e:
@@ -499,3 +525,216 @@ async def get_templates():
             {"id": "minimal", "name": "Minimal", "description": "Simple and elegant"},
         ]
     }
+
+
+# ── Tracking Endpoints (Phase 6 & 7 Parity) ──────────────────────────────────
+
+@router.get("/track/{token}")
+async def get_invoice_by_token(
+    token: str,
+    session: AsyncSession = Depends(get_session),
+):
+    """Public endpoint for clients to view an invoice by tracked link."""
+    result = await session.execute(select(InvoiceModel).where(InvoiceModel.tracked_link_token == token))
+    invoice = result.scalars().first()
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    # Pass current user if authenticated
+    try:
+        from app.api.deps import get_current_user_optional
+        current_user = await get_current_user_optional(session, token=None) # We don't have the token in header here easily if it's a public link, but let's try
+    except:
+        current_user = None
+
+    # Mark as viewed if first time AND not the creator
+    if not invoice.viewed_at and (not current_user or current_user.id != invoice.user_id):
+        invoice.viewed_at = datetime.utcnow()
+        if invoice.status == "sent":
+            invoice.status = "viewed"
+        await session.commit()
+
+    # Load structured line items rather than JSON bag
+    items_result = await session.execute(select(InvoiceLineItem).where(InvoiceLineItem.invoice_id == invoice.id))
+    items = items_result.scalars().all()
+
+    return {
+        "success": True,
+        "invoice": invoice,
+        "items": items
+    }
+
+from fastapi import Response
+from weasyprint import HTML
+
+@router.get("/{token}/pdf")
+async def download_dynamic_invoice_pdf(
+    token: str,
+    session: AsyncSession = Depends(get_session),
+):
+    """Dynamically reconstruct and render the PDF for an invoice."""
+    result = await session.execute(select(InvoiceModel).where(InvoiceModel.tracked_link_token == token))
+    invoice = result.scalars().first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    items_result = await session.execute(select(InvoiceLineItem).where(InvoiceLineItem.invoice_id == invoice.id))
+    items = items_result.scalars().all()
+
+    data = InvoiceRequest(
+        invoice_number=invoice.invoice_number,
+        invoice_date=invoice.invoice_date,
+        due_date=invoice.due_date,
+        from_address=InvoiceAddress(name=invoice.from_name, address_line1=invoice.from_details or ""),
+        to_address=InvoiceAddress(name=invoice.to_name, address_line1=invoice.to_details or ""),
+        currency=invoice.currency,
+        currency_symbol=invoice.currency_symbol,
+        notes=invoice.notes,
+        primary_color=invoice.primary_color,
+        signature_data=invoice.signature_data,
+        client_signature_data=invoice.client_signature_data,
+        items=[
+            InvoiceItem(description=i.description, quantity=i.quantity, unit_price=i.unit_price, tax_rate=i.tax_rate) 
+            for i in items
+        ]
+    )
+
+    html_content, _, _, _ = generate_invoice_html(data)
+    pdf_bytes = HTML(string=html_content).write_pdf()
+
+    return Response(
+        content=pdf_bytes, 
+        media_type="application/pdf", 
+        headers={"Content-Disposition": f'attachment; filename="Invoice_{invoice.invoice_number}.pdf"'}
+    )
+
+@router.put("/{token}")
+async def update_invoice(
+    token: str,
+    data: InvoiceRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Edit the entire document dynamically."""
+    result = await session.execute(select(InvoiceModel).where(InvoiceModel.tracked_link_token == token))
+    invoice = result.scalars().first()
+    
+    if not invoice or invoice.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    _, subtotal, tax_total, total = generate_invoice_html(data) # Just to re-calculate totals safely
+
+    invoice.invoice_number = data.invoice_number
+    invoice.invoice_date = data.invoice_date
+    invoice.due_date = data.due_date
+    invoice.from_name = data.from_address.name
+    invoice.from_details = data.from_address.address_line1
+    invoice.to_name = data.to_address.name
+    invoice.to_details = data.to_address.address_line1
+    invoice.items = {"items": [item.model_dump() for item in data.items]}
+    invoice.currency = data.currency
+    invoice.currency_symbol = data.currency_symbol
+    invoice.subtotal = subtotal
+    invoice.tax_total = tax_total
+    invoice.total = total
+    invoice.notes = data.notes
+    invoice.primary_color = data.primary_color
+    invoice.signature_data = data.signature_data
+    invoice.client_signature_data = data.client_signature_data
+
+    # Delete existing line items
+    await session.execute(delete(InvoiceLineItem).where(InvoiceLineItem.invoice_id == invoice.id))
+    
+    # Insert new ones
+    for item in data.items:
+        inv_item = InvoiceLineItem(
+            invoice_id=invoice.id,
+            description=item.description,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+            tax_rate=item.tax_rate,
+            total=item.quantity * item.unit_price
+        )
+        session.add(inv_item)
+        
+    await session.commit()
+    return {"success": True, "message": "Invoice updated"}
+
+@router.post("/{token}/request-review")
+async def request_review_invoice(
+    token: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Explicitly mark invoice as sent/review requested."""
+    result = await session.execute(select(InvoiceModel).where(InvoiceModel.tracked_link_token == token))
+    invoice = result.scalars().first()
+    
+    if not invoice or invoice.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    invoice.status = "sent"
+    invoice.sent_at = datetime.utcnow()
+    await session.commit()
+    return {"success": True, "message": "Review requested"}
+
+class InvoiceAcknowledgeRequest(BaseModel):
+    payment_method: Optional[str] = None
+
+
+@router.post("/{token}/acknowledge")
+async def acknowledge_invoice(
+    token: str,
+    data: InvoiceAcknowledgeRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """Client marks the invoice as acknowledged or scheduled to pay."""
+    result = await session.execute(select(InvoiceModel).where(InvoiceModel.tracked_link_token == token))
+    invoice = result.scalars().first()
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    if invoice.status in ["acknowledged", "paid"]:
+        return {"success": False, "error": f"Invoice already {invoice.status}"}
+
+    invoice.status = "acknowledged"
+    await session.commit()
+
+    return {
+        "success": True,
+        "message": "Invoice acknowledged. The freelancer has been notified.",
+    }
+
+
+class InvoiceCommentRequest(BaseModel):
+    author_name: str
+    body: str
+    author_role: str = "client"
+
+@router.post("/{token}/comments")
+async def add_invoice_comment(
+    token: str,
+    data: InvoiceCommentRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """Add a comment/question to the invoice."""
+    result = await session.execute(select(InvoiceModel).where(InvoiceModel.tracked_link_token == token))
+    invoice = result.scalars().first()
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    comment = InvoiceComment(
+        invoice_id=invoice.id,
+        author_id="anonymous_client" if data.author_role == "client" else invoice.user_id,
+        author_name=data.author_name,
+        author_role=data.author_role,
+        body=data.body
+    )
+    session.add(comment)
+    await session.commit()
+    
+    return {"success": True, "message": "Comment added successfully."}
+

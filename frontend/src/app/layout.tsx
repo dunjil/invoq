@@ -4,15 +4,14 @@ import { AuthProvider } from "@/lib/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Invoq — Invoice in 60 Seconds",
+  title: "Invoq — Quote it. Invoice it. Track it. Get paid.",
   description:
-    "The fastest invoice tool alive. Speak or type. Preview. Sign. Download. Done in 60 seconds.",
+    "The complete financial workflow for freelancers — in one place, without the chaos.",
   keywords: [
     "invoice generator",
-    "AI invoice",
-    "voice invoice",
+    "quote generator",
     "freelancer tools",
-    "PDF invoice",
+    "financial workflow",
     "invoq",
   ],
 };

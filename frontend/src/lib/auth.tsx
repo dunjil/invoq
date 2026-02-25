@@ -8,6 +8,7 @@ interface User {
     id: string;
     email: string;
     name: string;
+    role?: string;
     subscription_status: string;
     invoices_this_month?: number;
 }

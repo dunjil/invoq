@@ -143,7 +143,89 @@ export default function InvoqPage() {
   const [previewHtml, setPreviewHtml] = useState("");
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [trackedLink, setTrackedLink] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  // Edit Mode
+  const [editToken, setEditToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const editId = params.get("edit");
+      const duplicateIdRaw = params.get("duplicate");
+
+      if (editId) {
+        setEditToken(editId);
+        loadDocument(editId, false);
+      } else if (duplicateIdRaw) {
+        // e.g. "quote_abc123" or "invoice_xyz890"
+        const isQuoteStr = duplicateIdRaw.startsWith("quote_");
+        const realId = duplicateIdRaw.replace("quote_", "").replace("invoice_", "");
+        loadDocument(realId, true, isQuoteStr);
+      }
+    }
+  }, []);
+
+  const loadDocument = async (t: string, isDuplicate: boolean, isExplicitlyQuote: boolean = false) => {
+    try {
+      let isQuote = false;
+      let res;
+
+      // If duplicating from unified history, we might know the type directly from the query param
+      if (isExplicitlyQuote) {
+        isQuote = true;
+        res = await fetch(`${API_URL}/api/quotes/track/${t}`);
+      } else if (isDuplicate) {
+        // It's a duplicate of an invoice explicitly (or we didn't specify, fallback to invoice)
+        res = await fetch(`${API_URL}/api/invoice/track/${t}`);
+      } else {
+        // Legacy edit logic (try quote, then invoice)
+        res = await fetch(`${API_URL}/api/quotes/track/${t}`);
+        if (res.ok) isQuote = true;
+        else res = await fetch(`${API_URL}/api/invoice/track/${t}`);
+      }
+
+      if (res.ok) {
+        const data = await res.json();
+        const doc = isQuote ? data.quote : data.invoice;
+
+        setInvoiceTitle(isQuote ? "QUOTE" : "INVOICE");
+
+        if (isDuplicate) {
+          // Generate fresh identifiers for a duplicate
+          setInvoiceNumber(isQuote ? `QT-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}` : `INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`);
+          setInvoiceDate(new Date().toISOString().split("T")[0]);
+        } else {
+          setInvoiceNumber(isQuote ? doc.quote_number : doc.invoice_number);
+          setInvoiceDate(isQuote ? doc.quote_date : doc.invoice_date);
+        }
+
+        setDueDate(doc.due_date || "");
+        setFromName(doc.from_name || "");
+        setFromDetails(doc.from_details || "");
+        setToName(doc.to_name || "");
+        setToDetails(doc.to_details || "");
+
+        setCurrency(doc.currency || "USD");
+        setCurrencySymbol(doc.currency_symbol || "$");
+        setNotes(doc.notes || "");
+        if (doc.primary_color) setPrimaryColor(doc.primary_color);
+
+        if (data.items && data.items.length > 0) {
+          setItems(data.items.map((i: any) => ({
+            description: i.description,
+            quantity: i.quantity,
+            unit_price: i.unit_price,
+            tax_rate: i.tax_rate || 0
+          })));
+        }
+        toast.success(isDuplicate ? "Document duplicated successfully" : "Document loaded for editing");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Multi-profile
   interface ProfileData {
@@ -159,6 +241,13 @@ export default function InvoqPage() {
   const [profiles, setProfiles] = useState<ProfileData[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+
+  // Address Book
+  interface SavedClientData {
+    id: string; name: string; email: string | null; address: string | null; phone: string | null;
+  }
+  const [savedClients, setSavedClients] = useState<SavedClientData[]>([]);
+  const [clientMenuOpen, setClientMenuOpen] = useState(false);
 
   const applyProfile = (p: ProfileData) => {
     setActiveProfileId(p.id);
@@ -180,6 +269,55 @@ export default function InvoqPage() {
     setWatermarkRotation(p.watermark_rotation ?? -45);
     setWatermarkFontSize(p.watermark_font_size ?? 60);
     setProfileMenuOpen(false);
+  };
+
+  const applyClient = (c: SavedClientData) => {
+    setToName(c.name || "");
+    setToDetails([c.address, c.email, c.phone].filter(Boolean).join("\n"));
+    setClientMenuOpen(false);
+  };
+
+  const saveClientToAddressBook = async () => {
+    if (!token) return;
+    if (!toName.trim()) {
+      toast.error("Please enter a Client Name first.");
+      return;
+    }
+
+    // Attempt basic parsing of toDetails
+    const lines = toDetails.split('\n');
+    let email = null;
+    let phone = null;
+    let addressLines = [];
+
+    for (const line of lines) {
+      if (line.includes('@')) email = line.trim();
+      else if (/[\d\+\-\(\)\s]{8,}/.test(line)) phone = line.trim(); // rough phone heuristic
+      else addressLines.push(line.trim());
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/api/clients/saved`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: toName.trim(),
+          email: email,
+          phone: phone,
+          address: addressLines.length > 0 ? addressLines.join("\n") : null
+        })
+      });
+      if (res.ok) {
+        const newClient = await res.json();
+        setSavedClients([newClient, ...savedClients]);
+        toast.success("Client saved to your Address Book!");
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || "Could not save client.");
+      }
+    } catch {
+      toast.error("Network error saving client.");
+    }
   };
 
   // ── Load saved profiles ────────────────────────────────────
@@ -210,9 +348,52 @@ export default function InvoqPage() {
           }
         }
       } catch { }
+
+      try {
+        const res3 = await fetch(`${API_URL}/api/clients/saved`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res3.ok) {
+          setSavedClients(await res3.json());
+        }
+      } catch { }
     };
     loadProfiles();
   }, [token]);
+
+  // ── Sample Data Loader ────────────────────────────────────
+  const loadSampleData = (type: "QUOTE" | "INVOICE") => {
+    setInvoiceTitle(type);
+    setInvoiceNumber(type === "QUOTE" ? "QT-2026-001" : "INV-2026-001");
+    setInvoiceDate(new Date().toISOString().split("T")[0]);
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 14);
+    setDueDate(nextWeek.toISOString().split("T")[0]);
+
+    setFromName("Studio Alpha Design");
+    setFromDetails("hello@studioalpha.com\n123 Creative Blvd, NY 10001\nVAT: 987654321");
+
+    setToName("Acme Corp");
+    setToDetails("billing@acmecorp.com\n456 Enterprise Way, SF 94105");
+
+    setCurrency("USD");
+    setCurrencySymbol("$");
+
+    setItems([
+      { description: "Brand Strategy & Identity Framework", quantity: 1, unit_price: 2500, tax_rate: 0 },
+      { description: "Website UI/UX Design (Homepage + 5 internal pages)", quantity: 1, unit_price: 3200, tax_rate: 0 },
+      { description: "Asset Export & Handoff formatting", quantity: 10, unit_price: 50, tax_rate: 0 }
+    ]);
+
+    if (type === "QUOTE") {
+      setNotes("This quote is valid for 14 days. Upon approval, a 50% deposit invoice will be automatically generated.");
+      setIncludeSignatureLines(true);
+      setShowClientSignatureSection(true);
+    } else {
+      setNotes("Thank you for your business! Please deposit the total amount to Account #12345678 within 14 days.");
+      setIncludeSignatureLines(false);
+    }
+
+    toast.success(`Loaded sample ${type.toLowerCase()} data!`);
+  };
 
   // ── Voice Recording ───────────────────────────────────────
   const startRecording = async () => {
@@ -278,7 +459,8 @@ export default function InvoqPage() {
   // ── Invoice Data Builder ──────────────────────────────────
   const getInvoiceData = () => ({
     title: invoiceTitle,
-    invoice_number: invoiceNumber,
+    invoice_number: invoiceTitle === "INVOICE" ? invoiceNumber : undefined,
+    quote_number: invoiceTitle === "QUOTE" ? invoiceNumber : undefined,
     invoice_date: invoiceDate,
     due_date: dueDate || undefined,
     from_address: { name: fromName, address_line1: fromDetails, address_line2: "", city: "", state: "", postal_code: "", country: "", email: "", phone: "" },
@@ -326,6 +508,77 @@ export default function InvoqPage() {
         toast.success("Invoice downloaded");
         setPreviewOpen(false);
       } else toast.error(result.error || "Generation failed");
+    } catch (err: any) { toast.error(err.message); } finally { setIsGeneratingPdf(false); }
+  };
+
+  const handleSaveAndTrack = async () => {
+    if (!user) {
+      handleGenerate(); // Call download legacy workflow for guests
+      return;
+    }
+    const data = getInvoiceData();
+    setIsGeneratingPdf(true);
+    try {
+      if (invoiceTitle === "QUOTE") {
+        const payload = {
+          title: invoiceTitle,
+          quote_number: invoiceNumber,
+          quote_date: invoiceDate,
+          due_date: dueDate || undefined,
+          from_name: fromName,
+          from_details: fromDetails,
+          to_name: toName,
+          to_details: toDetails,
+          currency: useCustomCurrency ? customCurrencyCode : currency,
+          currency_symbol: useCustomCurrency ? customCurrencySymbol : currencySymbol,
+          subtotal: calculateSubtotal(),
+          tax_total: calculateTax(),
+          total: calculateTotal(),
+          notes: notes || undefined,
+          items: items,
+          extracted_json: { items }
+        };
+        const res = await fetch(
+          editToken ? `${API_URL}/api/quotes/${editToken}` : `${API_URL}/api/quotes`,
+          {
+            method: editToken ? "PUT" : "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify(payload)
+          }
+        );
+        const result = await res.json();
+        if (result.success) {
+          toast.success(editToken ? "Quote updated!" : "Quote saved & tracked link generated!");
+          if (!editToken) {
+            setTrackedLink(`${window.location.origin}/view/${result.tracked_link_token}`);
+          }
+          setPreviewOpen(false);
+        } else {
+          toast.error(result.error || "Failed to save Quote");
+        }
+      } else {
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers.Authorization = `Bearer ${token}`;
+
+        const endpoint = editToken ? `${API_URL}/api/invoice/${editToken}` : `${API_URL}/api/invoice/generate`;
+        const method = editToken ? "PUT" : "POST";
+
+        const res = await fetch(endpoint, { method, headers, body: JSON.stringify(data) });
+        const result = await res.json();
+        if (result.success) {
+          if (editToken) {
+            toast.success("Invoice updated!");
+          } else if (result.tracked_link_token) {
+            setTrackedLink(`${window.location.origin}/view/invoice/${result.tracked_link_token}`);
+            toast.success("Invoice saved & tracked link generated!");
+          } else {
+            toast.success("Invoice generated!");
+          }
+          setPreviewOpen(false);
+        } else {
+          toast.error(result.error || "Generation failed");
+        }
+      }
     } catch (err: any) { toast.error(err.message); } finally { setIsGeneratingPdf(false); }
   };
 
@@ -482,6 +735,68 @@ export default function InvoqPage() {
           </div>
         )}
 
+        {/* ── Document Type & Quick Start ────────────────── */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-xl border border-[#D4A017]/20 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-[#D4A017]/5 to-transparent rounded-full -mr-10 -mt-10 pointer-events-none" />
+          <div>
+            <h2 className="text-lg font-normal mb-1 flex items-center gap-2" style={{ fontFamily: "var(--font-heading)" }}>
+              What are you creating?
+              {invoiceTitle === "QUOTE" ? (
+                <span className="px-2 py-0.5 rounded-full bg-[#D4A017]/10 text-[#D4A017] text-[10px] font-bold tracking-widest uppercase">Drafting Quote</span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full bg-[#1A1A18]/5 text-[#1A1A18] text-[10px] font-bold tracking-widest uppercase">Drafting Invoice</span>
+              )}
+            </h2>
+            <p className="text-xs text-[#8A8880]">Select a document type or load a completed sample to test the workflow.</p>
+          </div>
+          <div className="flex flex-col w-full sm:w-auto gap-2">
+            <div className="flex bg-[#F5F3EE] p-1 rounded-lg w-full sm:w-auto">
+              <button
+                onClick={() => !editToken && setInvoiceTitle("QUOTE")}
+                disabled={!!editToken}
+                className={cn(
+                  "flex-1 sm:flex-none px-6 py-1.5 text-sm font-medium rounded-md transition-all",
+                  invoiceTitle === "QUOTE" ? "bg-white text-[#D4A017] shadow-sm" : "text-[#8A8880] hover:text-[#1A1A18]",
+                  editToken && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                Quote
+              </button>
+              <button
+                onClick={() => !editToken && setInvoiceTitle("INVOICE")}
+                disabled={!!editToken}
+                className={cn(
+                  "flex-1 sm:flex-none px-6 py-1.5 text-sm font-medium rounded-md transition-all",
+                  invoiceTitle === "INVOICE" ? "bg-white text-[#1A1A18] shadow-sm" : "text-[#8A8880] hover:text-[#1A1A18]",
+                  editToken && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                Invoice
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => !editToken && loadSampleData("QUOTE")}
+                disabled={!!editToken}
+                className="flex-1 text-xs h-8 border-[#D4A017]/30 text-[#D4A017] hover:bg-[#D4A017]/5"
+              >
+                Load Sample Quote
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => !editToken && loadSampleData("INVOICE")}
+                disabled={!!editToken}
+                className="flex-1 text-xs h-8"
+              >
+                Load Sample Invoice
+              </Button>
+            </div>
+          </div>
+        </div>
+
         {/* ── AI Extraction ──────────────────────────────── */}
         <Card className="gold-top-border overflow-hidden">
           <CardHeader className="py-5 px-6">
@@ -519,16 +834,6 @@ export default function InvoqPage() {
             <CardTitle className="text-lg font-normal" style={{ fontFamily: "var(--font-heading)" }}>Invoice Details</CardTitle>
           </CardHeader>
           <CardContent className="px-6 pb-6 pt-0 space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-[#4A4A45] uppercase tracking-wider font-medium">Document Type</Label>
-              <div className="flex flex-wrap gap-2">
-                {["INVOICE", "PROFORMA INVOICE", "RECEIPT", "QUOTE"].map((p) => (
-                  <button key={p} onClick={() => setInvoiceTitle(p)}
-                    className={cn("doc-pill px-3 py-1.5 text-xs rounded-lg border",
-                      invoiceTitle === p ? "active" : "text-[#4A4A45] border-[#E8E6E0]")}>{p}</button>
-                ))}
-              </div>
-            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs text-[#4A4A45] uppercase tracking-wider font-medium">Invoice Number</Label>
@@ -575,12 +880,48 @@ export default function InvoqPage() {
               <Textarea value={fromDetails} onChange={(e) => setFromDetails(e.target.value)} placeholder="Address, email, phone..." rows={3} className="resize-none text-sm placeholder:text-[#8A8880]" />
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="py-4 px-6">
-              <CardTitle className="text-base font-normal" style={{ fontFamily: "var(--font-heading)" }}>Bill To</CardTitle>
+          <Card className="relative overflow-visible">
+            <CardHeader className="py-4 px-6 flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-normal flex items-center gap-2" style={{ fontFamily: "var(--font-heading)" }}>
+                Bill To
+              </CardTitle>
+              {user && savedClients.length > 0 && (
+                <div className="relative">
+                  <button onClick={() => setClientMenuOpen(!clientMenuOpen)}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs text-[#8A8880] hover:text-[#1A1A18] hover:bg-[#F5F3EE] transition-colors">
+                    <Building className="h-3 w-3" />
+                    <span>Saved Clients</span>
+                    <ChevronDown className={cn("h-3 w-3 transition-transform", clientMenuOpen && "rotate-180")} />
+                  </button>
+                  {clientMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-[50]" onClick={() => setClientMenuOpen(false)} />
+                      <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-[#E8E6E0] rounded-xl shadow-lg z-[60] py-1.5 max-h-64 overflow-y-auto animate-fade-in-scale">
+                        <div className="px-3 py-1.5 text-xs font-semibold text-[#8A8880] uppercase tracking-wider">Select Client</div>
+                        {savedClients.map((c) => (
+                          <button key={c.id} onClick={() => applyClient(c)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-[#F5F3EE] transition-colors flex flex-col">
+                            <span className="font-medium text-[#1A1A18] truncate w-full">{c.name}</span>
+                            <span className="text-xs text-[#8A8880] truncate w-full">{c.email || "No email stored"}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </CardHeader>
             <CardContent className="px-6 pb-6 pt-0 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-[#4A4A45] uppercase tracking-wider font-medium">Client Name</Label>
+                {user && toName.trim() && !savedClients.some(c => c.name.toLowerCase() === toName.toLowerCase()) && (
+                  <button onClick={saveClientToAddressBook} className="text-[10px] text-[#D4A017] hover:underline font-medium uppercase tracking-wide">
+                    + Save Client
+                  </button>
+                )}
+              </div>
               <Input value={toName} onChange={(e) => setToName(e.target.value)} placeholder="Client name" className="h-10 text-sm" />
+              <Label className="text-xs text-[#4A4A45] uppercase tracking-wider font-medium pt-1 block">Client Details</Label>
               <Textarea value={toDetails} onChange={(e) => setToDetails(e.target.value)} placeholder="Address, email, phone..." rows={3} className="resize-none text-sm placeholder:text-[#8A8880]" />
             </CardContent>
           </Card>
@@ -752,12 +1093,23 @@ export default function InvoqPage() {
         </Collapsible>
 
         {/* ── Actions ────────────────────────────────────── */}
+        {trackedLink && (
+          <div className="p-4 mb-4 rounded-xl bg-[#FAF9F6] border border-[#D4A017] flex sm:flex-row flex-col gap-4 justify-between items-center animate-fade-in sm:items-center">
+            <div className="w-full">
+              <p className="text-xs font-semibold text-[#D4A017] uppercase tracking-wider mb-1">Tracked Link Generated</p>
+              <div className="truncate w-full max-w-[200px] sm:max-w-none text-sm font-mono text-[#4A4A45]">{trackedLink}</div>
+            </div>
+            <Button size="sm" onClick={() => { navigator.clipboard.writeText(trackedLink); toast.success("Copied to clipboard"); }} className="bg-[#D4A017] hover:bg-[#B8860B] text-white w-full sm:w-auto flex-shrink-0">
+              Copy Link
+            </Button>
+          </div>
+        )}
         <div className="flex gap-4 pb-10">
           <Button variant="outline" size="lg" className="flex-1 h-12 text-sm font-medium border-[#E8E6E0] text-[#4A4A45] hover:text-[#1A1A18] hover:border-[#D5D3CC]" onClick={handlePreview} disabled={!canGenerate || isGeneratingPreview}>
-            <Eye className="mr-2 h-4 w-4" /> {isGeneratingPreview ? "Loading..." : "Preview"}
+            <Eye className="mr-2 h-4 w-4" /> {isGeneratingPreview ? "Loading..." : "Preview Document"}
           </Button>
-          <Button size="lg" className="flex-1 h-12 text-sm font-medium bg-[#D4A017] hover:bg-[#B8860B] text-white shadow-sm" onClick={handleGenerate} disabled={!canGenerate || isGeneratingPdf}>
-            <Download className="mr-2 h-4 w-4" /> {isGeneratingPdf ? "Generating..." : "Download PDF"}
+          <Button size="lg" className={cn("flex-1 h-12 text-sm font-medium text-white shadow-sm", user ? "bg-[#D4A017] hover:bg-[#B8860B]" : "bg-[#1A1A18] hover:bg-[#333]")} onClick={handleSaveAndTrack} disabled={!canGenerate || isGeneratingPdf}>
+            <Download className="mr-2 h-4 w-4" /> {isGeneratingPdf ? "Saving..." : user ? (editToken ? "Update & Track" : "Save & Track") : "Download PDF"}
           </Button>
         </div>
       </main>
@@ -774,8 +1126,8 @@ export default function InvoqPage() {
                   <p className="text-xs text-[#8A8880] mt-0.5">Review before downloading</p>
                 </div>
               </div>
-              <Button size="sm" onClick={handleGenerate} disabled={isGeneratingPdf} className="bg-[#D4A017] hover:bg-[#B8860B] text-white h-10 px-5">
-                <Download className="mr-2 h-4 w-4" /> {isGeneratingPdf ? "Generating..." : "Download PDF"}
+              <Button size="sm" onClick={handleSaveAndTrack} disabled={isGeneratingPdf} className={cn("text-white h-10 px-5", user ? "bg-[#D4A017] hover:bg-[#B8860B]" : "bg-[#1A1A18] hover:bg-[#333]")}>
+                <Download className="mr-2 h-4 w-4" /> {isGeneratingPdf ? "Saving..." : user ? (editToken ? "Update & Track" : "Save & Track") : "Download PDF"}
               </Button>
             </DialogTitle>
           </DialogHeader>

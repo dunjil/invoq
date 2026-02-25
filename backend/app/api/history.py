@@ -9,67 +9,123 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc
 
 from app.db.session import get_session
-from app.db.models import User, Invoice
+from app.db.models import User, Invoice, Quote, InvoiceComment, QuoteComment
 from app.api.deps import get_current_user
+from sqlalchemy import func
 
 router = APIRouter(prefix="/api/history", tags=["history"])
 
-
-class InvoiceSummary(BaseModel):
+class DocumentSummary(BaseModel):
     id: str
-    invoice_number: str
-    invoice_date: str
+    token: str
+    type: str # "QUOTE" or "INVOICE"
+    document_number: str
+    document_date: str
     to_name: str
     total: float
     currency_symbol: str
+    status: str
     created_at: str
-
+    comment_count: int = 0
 
 class InvoiceDetail(BaseModel):
-    id: str
-    invoice_number: str
-    invoice_date: str
-    due_date: Optional[str]
-    from_name: str
-    from_details: Optional[str]
-    to_name: str
-    to_details: Optional[str]
-    items: Optional[dict]
-    currency: str
-    currency_symbol: str
-    subtotal: float
-    tax_total: float
-    total: float
-    notes: Optional[str]
-    primary_color: str
-    original_prompt: Optional[str]
-    created_at: str
+    pass
+# ... retaining InvoiceDetail as is for now, but will likely deprecate later if unified or keep for legacy routes
 
-
-@router.get("", response_model=List[InvoiceSummary])
-async def list_invoices(
+@router.get("", response_model=List[DocumentSummary])
+async def list_documents(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    """List all invoices for the current user."""
-    result = await session.execute(
+    """List all quotes and invoices for the current user, merged and sorted by creation date."""
+    
+    # Fetch invoices
+    inv_result = await session.execute(
         select(Invoice)
         .where(Invoice.user_id == user.id)
         .order_by(desc(Invoice.created_at))
         .limit(100)
     )
-    invoices = result.scalars().all()
+    invoices = inv_result.scalars().all()
+    
+    # Fetch quotes
+    quote_result = await session.execute(
+        select(Quote)
+        .where(Quote.user_id == user.id)
+        .order_by(desc(Quote.created_at))
+        .limit(100)
+    )
+    quotes = quote_result.scalars().all()
+    
+    # Fetch comment counts
+    invoice_ids = [inv.id for inv in invoices]
+    quote_ids = [q.id for q in quotes]
+    
+    inv_comments_res = await session.execute(
+        select(InvoiceComment.invoice_id, func.count(InvoiceComment.id))
+        .where(InvoiceComment.invoice_id.in_(invoice_ids))
+        .group_by(InvoiceComment.invoice_id)
+    ) if invoice_ids else []
+    inv_comment_counts = dict(inv_comments_res.all()) if invoice_ids else {}
+    
+    quote_comments_res = await session.execute(
+        select(QuoteComment.quote_id, func.count(QuoteComment.id))
+        .where(QuoteComment.quote_id.in_(quote_ids))
+        .group_by(QuoteComment.quote_id)
+    ) if quote_ids else []
+    quote_comment_counts = dict(quote_comments_res.all()) if quote_ids else {}
+
+    # Merge and map
+    documents = []
+    for inv in invoices:
+        documents.append({
+            "id": inv.id,
+            "token": inv.tracked_link_token,
+            "type": "INVOICE",
+            "document_number": inv.invoice_number,
+            "document_date": inv.invoice_date,
+            "to_name": inv.to_name,
+            "total": inv.total,
+            "currency_symbol": inv.currency_symbol,
+            "status": inv.status,
+            "created_at": inv.created_at,
+            "comment_count": inv_comment_counts.get(inv.id, 0)
+        })
+        
+    for q in quotes:
+        documents.append({
+            "id": q.id,
+            "token": q.tracked_link_token,
+            "type": "QUOTE",
+            "document_number": q.quote_number or "Draft",
+            "document_date": q.quote_date or "",
+            "to_name": q.to_name or "Unknown Client",
+            "total": q.total,
+            "currency_symbol": q.currency_symbol,
+            "status": q.status,
+            "created_at": q.created_at,
+            "comment_count": quote_comment_counts.get(q.id, 0)
+        })
+        
+    # Sort merged result by created_at descending
+    documents.sort(key=lambda x: x["created_at"], reverse=True)
+    
+    # Format and return standard summaries
     return [
-        InvoiceSummary(
-            id=inv.id,
-            invoice_number=inv.invoice_number,
-            invoice_date=inv.invoice_date,
-            to_name=inv.to_name,
-            total=inv.total,
-            currency_symbol=inv.currency_symbol,
-            created_at=inv.created_at.isoformat(),
+        DocumentSummary(
+            id=d["id"],
+            token=d["token"],
+            type=d["type"],
+            document_number=d["document_number"],
+            document_date=d["document_date"],
+            to_name=d["to_name"],
+            total=d["total"],
+            currency_symbol=d["currency_symbol"],
+            status=d["status"],
+            created_at=d["created_at"].isoformat(),
+            comment_count=d["comment_count"]
         )
-        for inv in invoices
+        for d in documents[:100] # Ensure we cap the unified feed at 100 for now
     ]
 
 

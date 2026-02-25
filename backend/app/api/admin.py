@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc
 
 from app.db.session import get_session
-from app.db.models import User, Invoice, BusinessProfile, ActivityLog, ExtractionLog
+from app.db.models import User, Invoice, Quote, SavedClient, BusinessProfile, ActivityLog, ExtractionLog
 from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -40,6 +40,8 @@ async def require_admin(
 class OverviewMetrics(BaseModel):
     total_users: int
     total_invoices: int
+    total_quotes: int
+    total_clients: int
     total_revenue: float
     pro_users: int
     free_users: int
@@ -49,6 +51,7 @@ class OverviewMetrics(BaseModel):
     invoices_today: int
     invoices_this_week: int
     invoices_this_month: int
+    quotes_this_month: int
     # Extraction stats
     total_extractions: int
     successful_extractions: int
@@ -108,6 +111,24 @@ class ActivityRow(BaseModel):
     created_at: str
     country_code: Optional[str]
     country_name: Optional[str]
+class QuoteRow(BaseModel):
+    id: str
+    quote_number: str
+    from_name: str
+    to_name: str
+    total: float
+    currency_symbol: str
+    user_email: Optional[str]
+    status: str
+    created_at: str
+
+class ClientRow(BaseModel):
+    id: str
+    name: str
+    email: Optional[str]
+    phone: Optional[str]
+    user_email: Optional[str]
+    created_at: str
 
 
 class ExtractionRow(BaseModel):
@@ -122,10 +143,13 @@ class DashboardResponse(BaseModel):
     overview: OverviewMetrics
     user_growth: List[GrowthPoint]
     invoice_growth: List[GrowthPoint]
+    quote_growth: List[GrowthPoint]
     revenue_growth: List[RevenuePoint]
     recent_users: List[UserRow]
     top_users: List[UserRow]
     recent_invoices: List[InvoiceRow]
+    recent_quotes: List[QuoteRow]
+    recent_clients: List[ClientRow]
     recent_activity: List[ActivityRow]
     recent_extractions: List[ExtractionRow]
 
@@ -148,9 +172,16 @@ async def get_dashboard(
     # ── Load all data ────────────────────────────────────
     users_result = await session.execute(select(User))
     all_users = users_result.scalars().all()
+    user_map = {u.id: u for u in all_users}
 
     invoices_result = await session.execute(select(Invoice))
     all_invoices = invoices_result.scalars().all()
+    
+    quotes_result = await session.execute(select(Quote))
+    all_quotes = quotes_result.scalars().all()
+    
+    clients_result = await session.execute(select(SavedClient))
+    all_clients = clients_result.scalars().all()
 
     extractions_result = await session.execute(select(ExtractionLog))
     all_extractions = extractions_result.scalars().all()
@@ -175,6 +206,7 @@ async def get_dashboard(
     invoices_today = len([i for i in all_invoices if i.created_at >= today])
     invoices_this_week = len([i for i in all_invoices if i.created_at >= week_ago])
     invoices_this_month = len([i for i in all_invoices if i.created_at >= month_ago])
+    quotes_this_month = len([q for q in all_quotes if q.created_at >= month_ago])
 
     # Churn & Retention Calculation
     downgrades = sum(1 for a in all_activities if a.action == "downgrade" and a.created_at >= period_start)
@@ -202,6 +234,8 @@ async def get_dashboard(
     overview = OverviewMetrics(
         total_users=len(all_users),
         total_invoices=len(all_invoices),
+        total_quotes=len(all_quotes),
+        total_clients=len(all_clients),
         total_revenue=total_revenue,
         pro_users=pro_users,
         free_users=free_users,
@@ -211,6 +245,7 @@ async def get_dashboard(
         invoices_today=invoices_today,
         invoices_this_week=invoices_this_week,
         invoices_this_month=invoices_this_month,
+        quotes_this_month=quotes_this_month,
         total_extractions=len(all_extractions),
         successful_extractions=len(successful),
         failed_extractions=len(failed),
@@ -227,6 +262,7 @@ async def get_dashboard(
     # ── Daily Growth ─────────────────────────────────────
     user_growth = []
     invoice_growth = []
+    quote_growth = []
     revenue_growth = []
 
     for i in range(days, -1, -1):
@@ -239,6 +275,9 @@ async def get_dashboard(
 
         day_invoices = [inv for inv in all_invoices if day_start <= inv.created_at < day_end]
         invoice_growth.append(GrowthPoint(date=date_str, count=len(day_invoices)))
+
+        day_quotes = [q for q in all_quotes if day_start <= q.created_at < day_end]
+        quote_growth.append(GrowthPoint(date=date_str, count=len(day_quotes)))
 
         day_rev = sum(inv.total for inv in day_invoices)
         revenue_growth.append(RevenuePoint(date=date_str, amount=day_rev, count=len(day_invoices)))
@@ -294,6 +333,37 @@ async def get_dashboard(
         for inv in sorted_invoices
     ]
 
+    # ── Recent Quotes ────────────────────────────────────
+    sorted_quotes = sorted(all_quotes, key=lambda q: q.created_at, reverse=True)[:20]
+    recent_quotes = [
+        QuoteRow(
+            id=q.id,
+            quote_number=q.quote_number,
+            from_name=q.from_name,
+            to_name=q.to_name,
+            total=q.total,
+            currency_symbol=q.currency_symbol,
+            user_email=user_map.get(q.user_id).email if q.user_id and q.user_id in user_map else None,
+            status=q.status,
+            created_at=q.created_at.isoformat(),
+        )
+        for q in sorted_quotes
+    ]
+
+    # ── Recent Clients ───────────────────────────────────
+    sorted_clients = sorted(all_clients, key=lambda c: c.created_at, reverse=True)[:20]
+    recent_clients = [
+        ClientRow(
+            id=c.id,
+            name=c.name,
+            email=c.email,
+            phone=c.phone,
+            user_email=user_map.get(c.user_id).email if c.user_id and c.user_id in user_map else None,
+            created_at=c.created_at.isoformat(),
+        )
+        for c in sorted_clients
+    ]
+
     # ── Recent Activity ──────────────────────────────────
     recent_activity = [
         ActivityRow(
@@ -324,10 +394,13 @@ async def get_dashboard(
         overview=overview,
         user_growth=user_growth,
         invoice_growth=invoice_growth,
+        quote_growth=quote_growth,
         revenue_growth=revenue_growth,
         recent_users=[to_row(u) for u in recent_users],
         top_users=[to_row(u) for u in top_users],
         recent_invoices=recent_invoices,
+        recent_quotes=recent_quotes,
+        recent_clients=recent_clients,
         recent_activity=recent_activity,
         recent_extractions=recent_extractions_list,
     )

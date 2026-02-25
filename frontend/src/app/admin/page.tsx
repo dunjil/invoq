@@ -17,6 +17,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 interface Overview {
     total_users: number;
     total_invoices: number;
+    total_quotes: number;
+    total_clients: number;
     total_revenue: number;
     pro_users: number;
     free_users: number;
@@ -26,6 +28,7 @@ interface Overview {
     invoices_today: number;
     invoices_this_week: number;
     invoices_this_month: number;
+    quotes_this_month: number;
     total_extractions: number;
     successful_extractions: number;
     failed_extractions: number;
@@ -51,6 +54,14 @@ interface InvoiceRow {
     id: string; invoice_number: string; from_name: string; to_name: string;
     total: number; currency_symbol: string; user_email: string | null; created_at: string;
 }
+interface QuoteRow {
+    id: string; quote_number: string; from_name: string; to_name: string;
+    total: number; currency_symbol: string; user_email: string | null; status: string; created_at: string;
+}
+interface ClientRowGlobal {
+    id: string; name: string; email: string | null; phone: string | null;
+    user_email: string | null; created_at: string;
+}
 interface ActivityRow {
     action: string; user_email: string | null; details: string | null;
     created_at: string; country_code: string | null; country_name: string | null;
@@ -64,10 +75,13 @@ interface DashboardData {
     overview: Overview;
     user_growth: GrowthPoint[];
     invoice_growth: GrowthPoint[];
+    quote_growth: GrowthPoint[];
     revenue_growth: RevenuePoint[];
     recent_users: UserRow[];
     top_users: UserRow[];
     recent_invoices: InvoiceRow[];
+    recent_quotes: QuoteRow[];
+    recent_clients: ClientRowGlobal[];
     recent_activity: ActivityRow[];
     recent_extractions: ExtractionRow[];
 }
@@ -124,7 +138,7 @@ export default function AdminDashboard() {
     const [data, setData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<"overview" | "users" | "invoices" | "activity" | "ai">("overview");
+    const [activeTab, setActiveTab] = useState<"overview" | "users" | "invoices" | "quotes" | "clients_global" | "activity" | "ai">("overview");
     const [searchTerm, setSearchTerm] = useState("");
     const [days, setDays] = useState<7 | 30 | 90>(30);
 
@@ -217,11 +231,11 @@ export default function AdminDashboard() {
                                 </select>
                             </div>
                         )}
-                        <div className="flex gap-1 bg-white rounded-lg p-1 border shrink-0 overflow-x-auto">
-                            {(["overview", "users", "invoices", "activity", "ai"] as const).map((tab) => (
+                        <div className="flex gap-1 bg-white rounded-lg p-1 border border-[#E8E6E0] shrink-0 overflow-x-auto no-scrollbar">
+                            {(["overview", "users", "invoices", "quotes", "clients_global", "activity", "ai"] as const).map((tab) => (
                                 <button key={tab} onClick={() => { setActiveTab(tab); setSearchTerm(""); }}
-                                    className={`px-4 py-1.5 rounded text-sm font-medium transition-colors capitalize whitespace-nowrap ${activeTab === tab ? "bg-[#1A1A18] text-white" : "text-[#4A4A45] hover:text-[#1A1A18]"}`}>
-                                    {tab === "ai" ? "AI Stats" : tab}
+                                    className={`px-4 py-1.5 rounded text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === tab ? "bg-[#1A1A18] text-white shadow-sm" : "text-[#8A8880] hover:text-[#1A1A18]"}`}>
+                                    {tab === "ai" ? "AI Stats" : tab === "clients_global" ? "Address Book" : tab}
                                 </button>
                             ))}
                         </div>
@@ -231,11 +245,11 @@ export default function AdminDashboard() {
                 {activeTab === "overview" && (
                     <>
                         {/* ── KPI Cards ──────────────────────────────── */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                             {[
-                                { label: "Active Users (DAU / MAU)", value: `${o.dau} / ${o.mau}`, icon: Activity, sub: `${o.active_users_week} active this week`, color: "#2563eb" },
-                                { label: "MRR / ARR", value: `$${mrr.toLocaleString()} / $${o.arr.toLocaleString()}`, icon: DollarSign, sub: `${o.pro_users} pro users`, color: "#D4A017" },
-                                { label: "Churn / Retention", value: `${o.churn_rate.toFixed(1)}% / ${o.retention_rate.toFixed(1)}%`, icon: TrendingUp, sub: `over last ${days} days`, color: "#ea580c" },
+                                { label: "Total Quotes", value: o.total_quotes.toString(), icon: FileText, sub: `${o.quotes_this_month} this month`, color: "#10b981" },
+                                { label: "Total Invoices", value: o.total_invoices.toString(), icon: FileText, sub: `${o.invoices_this_month} this month`, color: "#4A7C59" },
+                                { label: "Saved Clients", value: o.total_clients.toString(), icon: Users, sub: "Address Book", color: "#6366f1" },
                                 { label: "AI Success", value: `${aiSuccessRate}%`, icon: Zap, sub: `${o.total_extractions} total (${o.avg_extraction_time_ms}ms avg)`, color: "#9333ea" },
                             ].map((kpi, i) => (
                                 <Card key={i} className="overflow-hidden">
@@ -253,29 +267,58 @@ export default function AdminDashboard() {
                             ))}
                         </div>
 
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            {[
+                                { label: "Active Users (DAU / MAU)", value: `${o.dau} / ${o.mau}`, icon: Activity, sub: `${o.active_users_week} active this week`, color: "#2563eb" },
+                                { label: "MRR / ARR", value: `$${mrr.toLocaleString()} / $${o.arr.toLocaleString()}`, icon: DollarSign, sub: `${o.pro_users} pro users`, color: "#D4A017" },
+                                { label: "Churn / Retention", value: `${o.churn_rate.toFixed(1)}% / ${o.retention_rate.toFixed(1)}%`, icon: TrendingUp, sub: `over last ${days} days`, color: "#ea580c" },
+                            ].map((kpi, i) => (
+                                <Card key={i} className="overflow-hidden">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div className="p-1.5 rounded-lg" style={{ background: `${kpi.color}10` }}>
+                                                <kpi.icon className="h-4 w-4" style={{ color: kpi.color }} />
+                                            </div>
+                                        </div>
+                                        <p className="text-2xl font-semibold tracking-tight" style={{ fontFamily: "var(--font-mono)" }}>{kpi.value}</p>
+                                        <p className="text-xs text-[#4A4A45] mt-0.5">{kpi.label}</p>
+                                        <p className="text-[10px] mt-1.5" style={{ color: kpi.color }}>{kpi.sub}</p>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+
                         {/* ── Growth Charts ──────────────────────────── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                             <Card>
                                 <CardContent className="p-5">
                                     <div className="flex items-center gap-2 mb-4">
                                         <UserPlus className="h-4 w-4 text-[#2563eb]" />
-                                        <p className="text-sm font-medium">User Growth <span className="text-[#8A8880] font-normal">({days} days)</span></p>
+                                        <p className="text-[11px] font-bold uppercase tracking-wider text-[#1A1A18]">User Growth <span className="text-[#8A8880] font-medium ml-1">({days}d)</span></p>
                                     </div>
-                                    <BarChart data={data.user_growth.map(g => ({ label: g.date.slice(5), value: g.count }))} color="#2563eb" />
+                                    <BarChart data={data.user_growth.map(g => ({ label: g.date.slice(5), value: g.count }))} color="#2563eb" height={100} />
                                 </CardContent>
                             </Card>
                             <Card>
                                 <CardContent className="p-5">
                                     <div className="flex items-center gap-2 mb-4">
                                         <Activity className="h-4 w-4 text-[#4A7C59]" />
-                                        <p className="text-sm font-medium">Invoice Volume <span className="text-[#8A8880] font-normal">({days} days)</span></p>
+                                        <p className="text-[11px] font-bold uppercase tracking-wider text-[#1A1A18]">Invoice Volume <span className="text-[#8A8880] font-medium ml-1">({days}d)</span></p>
                                     </div>
-                                    <BarChart data={data.invoice_growth.map(g => ({ label: g.date.slice(5), value: g.count }))} color="#4A7C59" />
+                                    <BarChart data={data.invoice_growth.map(g => ({ label: g.date.slice(5), value: g.count }))} color="#4A7C59" height={100} />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent className="p-5">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <FileText className="h-4 w-4 text-[#D4A017]" />
+                                        <p className="text-[11px] font-bold uppercase tracking-wider text-[#1A1A18]">Quote Volume <span className="text-[#8A8880] font-medium ml-1">({days}d)</span></p>
+                                    </div>
+                                    <BarChart data={data.quote_growth.map(g => ({ label: g.date.slice(5), value: g.count }))} color="#D4A017" height={100} />
                                 </CardContent>
                             </Card>
                         </div>
 
-                        {/* Revenue chart */}
                         <Card>
                             <CardContent className="p-5">
                                 <div className="flex items-center gap-2 mb-4">
@@ -286,7 +329,94 @@ export default function AdminDashboard() {
                                 <Sparkline data={data.revenue_growth.map(g => g.amount)} color="#D4A017" height={60} />
                             </CardContent>
                         </Card>
+
+                        {/* Status Breakdown Section (Future implementation or mini indicators) */}
                     </>
+                )}
+
+                {activeTab === "quotes" && (
+                    <Card>
+                        <CardContent className="p-0">
+                            <div className="p-4 border-b bg-[#FDFCFA]">
+                                <h2 className="text-sm font-bold uppercase tracking-wider flex items-center gap-2"><FileText className="h-4 w-4 text-[#D4A017]" /> System Quotes</h2>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b bg-[#F5F3EE]/50">
+                                            <th className="text-left px-4 py-3 text-[10px] font-bold text-[#8A8880] uppercase tracking-widest">Quote #</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-bold text-[#8A8880] uppercase tracking-widest">Creator</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-bold text-[#8A8880] uppercase tracking-widest">Recipient</th>
+                                            <th className="text-center px-4 py-3 text-[10px] font-bold text-[#8A8880] uppercase tracking-widest">Status</th>
+                                            <th className="text-right px-4 py-3 text-[10px] font-bold text-[#8A8880] uppercase tracking-widest">Amount</th>
+                                            <th className="text-right px-4 py-3 text-[10px] font-bold text-[#8A8880] uppercase tracking-widest">Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.recent_quotes.filter(q =>
+                                            !searchTerm ||
+                                            q.quote_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                            q.to_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                            (q.user_email || "").toLowerCase().includes(searchTerm.toLowerCase())
+                                        ).map((q) => (
+                                            <tr key={q.id} className="border-b border-[#F5F3EE] hover:bg-white transition-colors">
+                                                <td className="px-4 py-3 font-mono text-[11px] font-bold text-[#1A1A18]">{q.quote_number}</td>
+                                                <td className="px-4 py-3 text-xs text-[#8A8880]">{q.user_email || "Anonymous"}</td>
+                                                <td className="px-4 py-3 text-xs font-medium">{q.to_name}</td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-tighter ${q.status === 'converted' ? 'bg-green-100 text-green-700' :
+                                                        q.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                                                            'bg-gray-100 text-gray-700'
+                                                        }`}>
+                                                        {q.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-mono font-bold text-xs">{q.currency_symbol}{q.total.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right text-[10px] text-[#8A8880] font-medium">{new Date(q.created_at).toLocaleDateString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {activeTab === "clients_global" && (
+                    <Card>
+                        <CardContent className="p-0">
+                            <div className="p-4 border-b bg-[#FDFCFA]">
+                                <h2 className="text-sm font-bold uppercase tracking-wider flex items-center gap-2"><Users className="h-4 w-4 text-[#6366f1]" /> Global Address Book</h2>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b bg-[#F5F3EE]/50">
+                                            <th className="text-left px-4 py-3 text-[10px] font-bold text-[#8A8880] uppercase tracking-widest">Client Name</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-bold text-[#8A8880] uppercase tracking-widest">Client Email</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-bold text-[#8A8880] uppercase tracking-widest">Saved By</th>
+                                            <th className="text-right px-4 py-3 text-[10px] font-bold text-[#8A8880] uppercase tracking-widest">Date Saved</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.recent_clients.filter(c =>
+                                            !searchTerm ||
+                                            c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                            (c.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                            (c.user_email || "").toLowerCase().includes(searchTerm.toLowerCase())
+                                        ).map((c) => (
+                                            <tr key={c.id} className="border-b border-[#F5F3EE] hover:bg-white transition-colors">
+                                                <td className="px-4 py-3 font-bold text-[#1A1A18]">{c.name}</td>
+                                                <td className="px-4 py-3 text-xs text-[#8A8880]">{c.email || "—"}</td>
+                                                <td className="px-4 py-3 text-xs font-medium text-[#4A4A45]">{c.user_email || "System"}</td>
+                                                <td className="px-4 py-3 text-right text-[10px] text-[#8A8880] font-medium">{new Date(c.created_at).toLocaleDateString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
                 )}
 
                 {activeTab === "users" && (

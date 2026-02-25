@@ -1,0 +1,367 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Custom palette tokens */
+  --color-gold: #D4A017;
+  --color-gold-hover: #B8860B;
+  --color-gold-light: rgba(212, 160, 23, 0.08);
+  --color-gold-border: rgba(212, 160, 23, 0.25);
+  --color-success: #4A7C59;
+  --color-ink: #1A1A18;
+  --color-ink-secondary: #6B6B63;
+  --color-chalk: #FAF9F6;
+  --color-warm-border: #E8E6E0;
+
+  /* Font families */
+  --font-heading: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'DM Mono', 'SF Mono', 'Fira Mono', monospace;
+}
+
+:root {
+  --background: #FAF9F6;
+  --foreground: #1A1A18;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A18;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A18;
+  --primary: #D4A017;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F5F3EE;
+  --secondary-foreground: #1A1A18;
+  --muted: #F5F3EE;
+  --muted-foreground: #6B6B63;
+  --accent: #F5F3EE;
+  --accent-foreground: #1A1A18;
+  --destructive: #C0392B;
+  --destructive-foreground: #FFFFFF;
+  --border: #E8E6E0;
+  --input: #E8E6E0;
+  --ring: #D4A017;
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ─── Typography ────────────────────────────────────────── */
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+}
+
+/* Monospaced numerals for financial data */
+.font-mono,
+.tabular-nums {
+  font-family: var(--font-mono) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D5D3CC;
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #B5B3AC;
+}
+
+/* ─── Focus ─────────────────────────────────────────────── */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgba(212, 160, 23, 0.35);
+}
+
+/* ─── Premium Cards ─────────────────────────────────────── */
+[data-slot="card"] {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-slot="card"]:hover {
+  border-color: #D5D3CC;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* ─── Inputs ────────────────────────────────────────────── */
+input:not([type="checkbox"]):not([type="color"]):not([type="file"]),
+textarea,
+select,
+[role="combobox"] {
+  font-family: var(--font-body);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+input:not([type="checkbox"]):not([type="color"]):not([type="file"]):focus,
+textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.1) !important;
+}
+
+/* Financial figures in inputs */
+input.font-mono {
+  font-family: var(--font-mono) !important;
+  letter-spacing: 0.02em;
+}
+
+/* ─── Buttons ───────────────────────────────────────────── */
+button,
+a {
+  transition: all 0.2s ease;
+}
+
+.btn-gold {
+  background: var(--primary);
+  color: white;
+  font-weight: 500;
+}
+
+.btn-gold:hover {
+  background: var(--color-gold-hover);
+}
+
+/* ─── Animations ────────────────────────────────────────── */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes recording-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(192, 57, 43, 0);
+  }
+}
+
+@keyframes drawSignature {
+  from {
+    stroke-dashoffset: 300;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in-scale {
+  animation: fade-in-scale 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-recording {
+  animation: recording-pulse 1.5s ease-out infinite;
+}
+
+/* Stagger children */
+.stagger>* {
+  animation: fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stagger>*:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.stagger>*:nth-child(2) {
+  animation-delay: 50ms;
+}
+
+.stagger>*:nth-child(3) {
+  animation-delay: 100ms;
+}
+
+.stagger>*:nth-child(4) {
+  animation-delay: 150ms;
+}
+
+.stagger>*:nth-child(5) {
+  animation-delay: 200ms;
+}
+
+.stagger>*:nth-child(6) {
+  animation-delay: 250ms;
+}
+
+/* ─── Dropdown ──────────────────────────────────────────── */
+.dropdown-menu {
+  background: white;
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.dropdown-item {
+  transition: background-color 0.15s ease;
+  border-radius: 6px;
+  margin: 2px 4px;
+}
+
+.dropdown-item:hover {
+  background: var(--muted);
+}
+
+/* ─── Document type pills ───────────────────────────────── */
+.doc-pill {
+  transition: all 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+.doc-pill:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.doc-pill.active {
+  border-color: var(--primary);
+  background: rgba(212, 160, 23, 0.08);
+  color: var(--primary);
+}
+
+/* ─── Selection & accents ───────────────────────────────── */
+::selection {
+  background: rgba(212, 160, 23, 0.15);
+  color: var(--foreground);
+}
+
+/* ─── Invoice preview ───────────────────────────────────── */
+.invoice-preview-content {
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  color: #333;
+  line-height: 1.6;
+}
+
+.invoice-preview-content * {
+  box-sizing: border-box;
+}
+
+.invoice-preview-content table {
+  width: 100% !important;
+  border-collapse: collapse;
+}
+
+.invoice-preview-content img {
+  max-width: 150px !important;
+  max-height: 50px !important;
+}
+
+/* ─── Pro badge ─────────────────────────────────────────── */
+.pro-badge {
+  background: linear-gradient(135deg, #D4A017, #B8860B);
+  color: white;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ─── Subtle top border accent on AI card ───────────────── */
+.gold-top-border {
+  position: relative;
+}
+
+.gold-top-border::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  border-radius: 0 0 2px 2px;
+}

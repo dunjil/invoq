@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc
 
 from app.db.session import get_session
-from app.db.models import User, Invoice, Quote, InvoiceComment, QuoteComment
+from app.db.models import User, Invoice, Quote, InvoiceComment, QuoteComment, Contract
 from app.api.deps import get_current_user
 from sqlalchemy import func
 
@@ -47,6 +47,15 @@ async def list_documents(
         .limit(100)
     )
     invoices = inv_result.scalars().all()
+    
+    # Fetch Contracts
+    contract_res = await session.execute(
+        select(Contract)
+        .where(Contract.user_id == user.id)
+        .order_by(desc(Contract.created_at))
+        .limit(100)
+    )
+    contracts = contract_res.scalars().all()
     
     # Fetch quotes
     quote_result = await session.execute(
@@ -105,6 +114,22 @@ async def list_documents(
             "status": q.status,
             "created_at": q.created_at,
             "comment_count": quote_comment_counts.get(q.id, 0)
+        })
+
+    # Add contracts
+    for c in contracts:
+        documents.append({
+            "id": c.id,
+            "token": c.tracked_link_token,
+            "type": c.type.upper(), # contract, nda, msa
+            "document_number": c.contract_number or "Draft",
+            "document_date": c.created_at.isoformat(), # Using created_at as document_date for contracts
+            "to_name": c.to_name or "Unknown Client",
+            "total": 0.0, # Contracts don't typically have a 'total' field in the same way invoices/quotes do
+            "currency_symbol": "", # Contracts don't typically have a currency_symbol
+            "status": c.status,
+            "created_at": c.created_at,
+            "comment_count": 0 # Contracts don't have comments yet
         })
         
     # Sort merged result by created_at descending

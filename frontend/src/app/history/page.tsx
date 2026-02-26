@@ -66,12 +66,12 @@ export default function HistoryPage() {
                 <div className="flex flex-col sm:flex-row gap-4 mb-8">
                     <div className="flex-1">
                         <label className="block text-[10px] font-bold text-[#8A8880] uppercase tracking-widest mb-2">Type</label>
-                        <div className="flex bg-[#F5F3EE] p-1 rounded-lg">
-                            {["all", "QUOTE", "INVOICE"].map((t) => (
+                        <div className="flex bg-[#F5F3EE] p-1 rounded-lg flex-wrap gap-1">
+                            {["all", "QUOTE", "INVOICE", "CONTRACT", "NDA", "MSA"].map((t) => (
                                 <button
                                     key={t}
                                     onClick={() => setTypeFilter(t)}
-                                    className={`flex-1 px-4 py-1.5 text-xs font-medium rounded-md transition-all ${typeFilter === t ? "bg-white text-[#1A1A18] shadow-sm" : "text-[#8A8880] hover:text-[#1A1A18]"}`}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${typeFilter === t ? "bg-white text-[#1A1A18] shadow-sm" : "text-[#8A8880] hover:text-[#1A1A18]"}`}
                                 >
                                     {t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()}
                                 </button>
@@ -109,9 +109,13 @@ export default function HistoryPage() {
                 ) : (
                     <div className="space-y-2 stagger">
                         {filteredDocuments.map((doc) => {
-                            const linkHref = doc.type.toLowerCase() === 'invoice'
-                                ? `/view/invoice/${doc.token}`
-                                : `/view/${doc.token}`;
+                            let linkHref = `/view/${doc.token}`;
+
+                            if (doc.type.toLowerCase() === 'invoice') {
+                                linkHref = `/view/invoice/${doc.token}`;
+                            } else if (['contract', 'nda', 'msa'].includes(doc.type.toLowerCase())) {
+                                linkHref = `/view/contract/${doc.token}`;
+                            }
 
                             const statusColors: Record<string, string> = {
                                 "draft": "bg-slate-100 text-slate-600",
@@ -136,7 +140,7 @@ export default function HistoryPage() {
                                                         <div>
                                                             <div className="flex flex-wrap items-center gap-2">
                                                                 <p className="text-sm font-medium font-mono">{doc.document_number}</p>
-                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase ${doc.type === "QUOTE" ? "bg-[#D4A017]/10 text-[#D4A017]" : "bg-[#1A1A18]/5 text-[#1A1A18]"}`}>
+                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase ${doc.type === "QUOTE" ? "bg-[#D4A017]/10 text-[#D4A017]" : ['CONTRACT', 'NDA', 'MSA'].includes(doc.type) ? "bg-purple-100 text-purple-700" : "bg-[#1A1A18]/5 text-[#1A1A18]"}`}>
                                                                     {doc.type}
                                                                 </span>
                                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase ${statusColors[doc.status] || "bg-[#F5F3EE] text-[#8A8880]"}`}>
@@ -153,7 +157,11 @@ export default function HistoryPage() {
                                                         </div>
                                                     </div>
                                                     <div className="text-right shrink-0">
-                                                        <p className="text-sm font-semibold font-mono">{doc.currency_symbol}{doc.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                                        {['CONTRACT', 'NDA', 'MSA'].includes(doc.type) ? (
+                                                            <p className="text-sm font-semibold font-mono text-gray-400">--</p>
+                                                        ) : (
+                                                            <p className="text-sm font-semibold font-mono">{doc.currency_symbol}{doc.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                                        )}
                                                         <p className="text-[10px] text-[#8A8880] font-mono mt-0.5">{new Date(doc.created_at).toLocaleDateString()}</p>
                                                     </div>
                                                 </div>

@@ -1,0 +1,940 @@
+nohup: ignoring input
+INFO:     Will watch for changes in these directories: ['/home/duna/Desktop/invoq/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [30619] using WatchFiles
+INFO:     Started server process [30633]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:54976 - "OPTIONS /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54992 - "OPTIONS /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54976 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54992 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54992 - "GET /api/quotes/track/3f9ed9a4-d9ce-4597-881f-5726e4ac564c HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54992 - "GET /api/quotes/track/3f9ed9a4-d9ce-4597-881f-5726e4ac564c HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54992 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54976 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54976 - "GET /api/quotes/track/de616185-ac5e-4f8b-8d57-1ed179089853 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54992 - "GET /api/quotes/track/de616185-ac5e-4f8b-8d57-1ed179089853 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54998 - "POST /api/invoice/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54992 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54976 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55302 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55312 - "GET /api/clients/saved HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:58196 - "HEAD /api/clients/saved HTTP/1.1" 405 Method Not Allowed
+WARNING:  WatchFiles detected changes in 'app/api/invoice.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [30633]
+INFO:     Started server process [31176]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:42828 - "GET /api/quotes/track/de616185-ac5e-4f8b-8d57-1ed179089853 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:42844 - "GET /api/quotes/track/de616185-ac5e-4f8b-8d57-1ed179089853 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:42844 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42828 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58448 - "GET /api/quotes/track/3f9ed9a4-d9ce-4597-881f-5726e4ac564c HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58460 - "GET /api/quotes/track/3f9ed9a4-d9ce-4597-881f-5726e4ac564c HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54122 - "GET /api/quotes/track/3f9ed9a4-d9ce-4597-881f-5726e4ac564c HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54126 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54132 - "GET /api/quotes/track/3f9ed9a4-d9ce-4597-881f-5726e4ac564c HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54148 - "GET /api/auth/me HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/api/history.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [31176]
+INFO:     Started server process [31716]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:37758 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:37768 - "GET /api/history HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51726 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51730 - "GET /api/history HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:47966 - "GET /api/quotes/track/3f9ed9a4-d9ce-4597-881f-5726e4ac564c HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47980 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47980 - "GET /api/history HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/home/duna/Desktop/invoq/backend/app/api/history.py", line 73, in list_documents
+    documents.append({
+NameError: name 'documents' is not defined
+INFO:     127.0.0.1:47966 - "GET /api/history HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/home/duna/Desktop/invoq/backend/app/api/history.py", line 73, in list_documents
+    documents.append({
+NameError: name 'documents' is not defined
+INFO:     127.0.0.1:47988 - "GET /api/history HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/home/duna/Desktop/invoq/backend/app/api/history.py", line 73, in list_documents
+    documents.append({
+NameError: name 'documents' is not defined
+INFO:     127.0.0.1:47996 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47996 - "GET /api/history HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/home/duna/Desktop/invoq/backend/app/api/history.py", line 73, in list_documents
+    documents.append({
+NameError: name 'documents' is not defined
+WARNING:  WatchFiles detected changes in 'app/api/history.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [31716]
+INFO:     Started server process [32228]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:51968 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51968 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51968 - "GET /api/quotes/track/f96cd13a-28c3-447c-86d4-9e66c618bd8e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51968 - "GET /api/quotes/track/f96cd13a-28c3-447c-86d4-9e66c618bd8e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58040 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58042 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36990 - "GET /api/quotes/track/b5b23bb4-ebcc-4ec6-bbe7-7772f4e9e9eb HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37004 - "GET /api/quotes/track/b5b23bb4-ebcc-4ec6-bbe7-7772f4e9e9eb HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40964 - "OPTIONS /api/quotes/b5b23bb4-ebcc-4ec6-bbe7-7772f4e9e9eb/comments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40964 - "POST /api/quotes/b5b23bb4-ebcc-4ec6-bbe7-7772f4e9e9eb/comments HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:47356 - "POST /api/quotes/b5b23bb4-ebcc-4ec6-bbe7-7772f4e9e9eb/comments HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:47356 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47368 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47368 - "GET /api/quotes/track/b5b23bb4-ebcc-4ec6-bbe7-7772f4e9e9eb HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47356 - "GET /api/quotes/track/b5b23bb4-ebcc-4ec6-bbe7-7772f4e9e9eb HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47356 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47368 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47356 - "OPTIONS /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53886 - "OPTIONS /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47368 - "GET /api/quotes/track/b5b23bb4-ebcc-4ec6-bbe7-7772f4e9e9eb HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47356 - "GET /api/quotes/track/b5b23bb4-ebcc-4ec6-bbe7-7772f4e9e9eb HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53886 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47356 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53886 - "OPTIONS /api/clients/saved HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53886 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47356 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49492 - "OPTIONS /api/invoice/b5b23bb4-ebcc-4ec6-bbe7-7772f4e9e9eb HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49492 - "PUT /api/invoice/b5b23bb4-ebcc-4ec6-bbe7-7772f4e9e9eb HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53786 - "OPTIONS /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53786 - "OPTIONS /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53792 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53786 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45858 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45874 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45874 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45858 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45858 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45874 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58620 - "GET /api/quotes/track/f96cd13a-28c3-447c-86d4-9e66c618bd8e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58632 - "GET /api/quotes/track/f96cd13a-28c3-447c-86d4-9e66c618bd8e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54030 - "OPTIONS /api/quotes/f96cd13a-28c3-447c-86d4-9e66c618bd8e/comments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54030 - "POST /api/quotes/f96cd13a-28c3-447c-86d4-9e66c618bd8e/comments HTTP/1.1" 422 Unprocessable Entity
+WARNING:  WatchFiles detected changes in 'app/db/models.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [32228]
+INFO:     Started server process [33960]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:54460 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54470 - "GET /api/history HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/api/invoice.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [33960]
+WARNING:  WatchFiles detected changes in 'app/api/quote.py'. Reloading...
+INFO:     Started server process [34189]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Started server process [34373]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'alembic/versions/aea4038c8801_add_author_name_to_comments.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [34373]
+INFO:     Started server process [34602]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:37842 - "GET /api/quotes/track/f96cd13a-28c3-447c-86d4-9e66c618bd8e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37872 - "GET /api/quotes/track/f96cd13a-28c3-447c-86d4-9e66c618bd8e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37858 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37872 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37858 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:37858 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:37884 - "OPTIONS /api/quotes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37884 - "POST /api/quotes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59772 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59778 - "GET /api/history HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'alembic/versions/aea4038c8801_add_author_name_to_comments.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [34602]
+INFO:     Started server process [34964]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:43530 - "GET /api/quotes/track/deffbb99-22bd-4bea-a451-def94e0f9c87 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43540 - "GET /api/quotes/track/deffbb99-22bd-4bea-a451-def94e0f9c87 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43540 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43530 - "GET /api/history HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/api/history.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [34964]
+INFO:     Started server process [35328]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:33626 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44190 - "GET /api/quotes/track/deffbb99-22bd-4bea-a451-def94e0f9c87 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44196 - "GET /api/quotes/track/deffbb99-22bd-4bea-a451-def94e0f9c87 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44196 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44190 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44190 - "GET /api/quotes/track/f96cd13a-28c3-447c-86d4-9e66c618bd8e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44196 - "GET /api/quotes/track/f96cd13a-28c3-447c-86d4-9e66c618bd8e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44196 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44190 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44190 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44196 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44190 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:44196 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:44196 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44190 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44190 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44196 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44190 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:44196 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+WARNING:  WatchFiles detected changes in 'app/api/address_book.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [35328]
+INFO:     Started server process [36449]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:55564 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55564 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55564 - "OPTIONS /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55564 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55564 - "OPTIONS /api/clients/saved HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55564 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+WARNING:  WatchFiles detected changes in 'app/api/invoice.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [36449]
+INFO:     Started server process [36739]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/api/quote.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [36739]
+INFO:     Started server process [36935]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:52906 - "GET /api/auth/me HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/api/quote.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [36935]
+INFO:     Started server process [37258]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:52918 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52918 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52918 - "OPTIONS /api/admin/dashboard?days=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52918 - "GET /api/admin/dashboard?days=30 HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/home/duna/Desktop/invoq/backend/app/api/admin.py", line 311, in get_dashboard
+    recent_activity = [
+  File "/home/duna/Desktop/invoq/backend/app/api/admin.py", line 314, in <listcomp>
+    user_email=user_map.get(a.user_id, None).email if a.user_id and a.user_id in user_map else None,
+NameError: name 'user_map' is not defined
+INFO:     127.0.0.1:45540 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45540 - "GET /api/admin/dashboard?days=30 HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/home/duna/Desktop/invoq/backend/app/api/admin.py", line 311, in get_dashboard
+    recent_activity = [
+  File "/home/duna/Desktop/invoq/backend/app/api/admin.py", line 314, in <listcomp>
+    user_email=user_map.get(a.user_id, None).email if a.user_id and a.user_id in user_map else None,
+NameError: name 'user_map' is not defined
+INFO:     127.0.0.1:51442 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51442 - "GET /api/admin/dashboard?days=30 HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/home/duna/Desktop/invoq/backend/app/api/admin.py", line 311, in get_dashboard
+    recent_activity = [
+  File "/home/duna/Desktop/invoq/backend/app/api/admin.py", line 314, in <listcomp>
+    user_email=user_map.get(a.user_id, None).email if a.user_id and a.user_id in user_map else None,
+NameError: name 'user_map' is not defined
+INFO:     127.0.0.1:37544 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37546 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37544 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:37546 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+WARNING:  WatchFiles detected changes in 'app/api/quote.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [37258]
+INFO:     Started server process [37825]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:39730 - "OPTIONS /api/invoice/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39730 - "POST /api/invoice/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39730 - "OPTIONS /api/invoice/generate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39730 - "POST /api/invoice/generate HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/api/quote.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [37825]
+INFO:     Started server process [38235]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/api/quote.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [38235]
+INFO:     Started server process [38549]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:44226 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44226 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44226 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49344 - "GET /api/admin/dashboard?days=30 HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/home/duna/Desktop/invoq/backend/app/api/admin.py", line 311, in get_dashboard
+    recent_activity = [
+  File "/home/duna/Desktop/invoq/backend/app/api/admin.py", line 314, in <listcomp>
+    user_email=user_map.get(a.user_id, None).email if a.user_id and a.user_id in user_map else None,
+NameError: name 'user_map' is not defined
+INFO:     127.0.0.1:49356 - "GET /api/admin/dashboard?days=30 HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/home/duna/Desktop/invoq/backend/app/api/admin.py", line 311, in get_dashboard
+    recent_activity = [
+  File "/home/duna/Desktop/invoq/backend/app/api/admin.py", line 314, in <listcomp>
+    user_email=user_map.get(a.user_id, None).email if a.user_id and a.user_id in user_map else None,
+NameError: name 'user_map' is not defined
+INFO:     127.0.0.1:49372 - "GET /api/admin/dashboard?days=30 HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+  File "/home/duna/Desktop/invoq/backend/venv/lib/python3.10/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/home/duna/Desktop/invoq/backend/app/api/admin.py", line 311, in get_dashboard
+    recent_activity = [
+  File "/home/duna/Desktop/invoq/backend/app/api/admin.py", line 314, in <listcomp>
+    user_email=user_map.get(a.user_id, None).email if a.user_id and a.user_id in user_map else None,
+NameError: name 'user_map' is not defined
+INFO:     127.0.0.1:49388 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49398 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49388 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49398 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35902 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35902 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35902 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+WARNING:  WatchFiles detected changes in 'app/api/admin.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [38549]
+INFO:     Started server process [39273]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:58914 - "GET /api/admin/dashboard?days=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58930 - "GET /api/admin/dashboard?days=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46986 - "OPTIONS /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46990 - "OPTIONS /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46990 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46986 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46986 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46990 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:43932 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43948 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43948 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:43932 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:43932 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43948 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43948 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:43932 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+WARNING:  WatchFiles detected changes in 'app/api/admin.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [39273]
+INFO:     Started server process [40101]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:43130 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43132 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43130 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:43132 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:43132 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39886 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39886 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43132 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43132 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39886 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+WARNING:  WatchFiles detected changes in 'app/api/admin.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [40101]
+INFO:     Started server process [40479]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:41072 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41080 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41080 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41072 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41072 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:41072 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:37730 - "OPTIONS /api/billing/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37746 - "OPTIONS /api/billing/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37730 - "GET /api/billing/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37746 - "GET /api/billing/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37746 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37730 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37730 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:37730 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54972 - "GET /api/admin/dashboard?days=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54982 - "GET /api/admin/dashboard?days=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45290 - "OPTIONS /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45292 - "OPTIONS /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45290 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45292 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45292 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45290 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45290 - "OPTIONS /api/clients/saved HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45292 - "OPTIONS /api/clients/saved HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45290 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45292 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45292 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45290 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45292 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45290 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:41858 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41870 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52686 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52700 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52700 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52686 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:33342 - "POST /api/invoice/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54874 - "OPTIONS /api/quotes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54874 - "POST /api/quotes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54874 - "OPTIONS /api/invoice/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54874 - "POST /api/invoice/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35522 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35526 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35526 - "GET /api/quotes/track/f83cd747-87ef-4634-a7d3-f32f526f509a HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35522 - "GET /api/quotes/track/f83cd747-87ef-4634-a7d3-f32f526f509a HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44596 - "GET /api/quotes/f83cd747-87ef-4634-a7d3-f32f526f509a/pdf HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/api/invoice.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [40479]
+WARNING:  WatchFiles detected changes in 'app/api/quote.py'. Reloading...
+INFO:     Started server process [42399]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Started server process [42603]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:42812 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42818 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42818 - "GET /api/quotes/track/deffbb99-22bd-4bea-a451-def94e0f9c87 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42812 - "GET /api/quotes/track/deffbb99-22bd-4bea-a451-def94e0f9c87 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42812 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42818 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59800 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59814 - "GET /api/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59800 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59814 - "GET /api/clients/saved HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60496 - "OPTIONS /api/invoice/generate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60496 - "POST /api/invoice/generate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44692 - "POST /api/invoice/generate HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/api/invoice.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [42603]
+INFO:     Started server process [43066]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:41592 - "POST /api/invoice/generate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60106 - "OPTIONS /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60112 - "OPTIONS /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60106 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60112 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60112 - "GET /api/invoice/track/2b03ab3f-1a8f-4a56-8587-9e1bde563dbc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60106 - "GET /api/invoice/track/2b03ab3f-1a8f-4a56-8587-9e1bde563dbc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46782 - "OPTIONS /api/invoice/2b03ab3f-1a8f-4a56-8587-9e1bde563dbc/comments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46782 - "POST /api/invoice/2b03ab3f-1a8f-4a56-8587-9e1bde563dbc/comments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50016 - "OPTIONS /api/invoice/2b03ab3f-1a8f-4a56-8587-9e1bde563dbc/acknowledge HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50016 - "POST /api/invoice/2b03ab3f-1a8f-4a56-8587-9e1bde563dbc/acknowledge HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50016 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50030 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53052 - "GET /api/invoice/track/2b03ab3f-1a8f-4a56-8587-9e1bde563dbc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53068 - "GET /api/invoice/track/2b03ab3f-1a8f-4a56-8587-9e1bde563dbc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56968 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56972 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56980 - "GET /api/quotes/track/f83cd747-87ef-4634-a7d3-f32f526f509a HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56990 - "GET /api/quotes/track/f83cd747-87ef-4634-a7d3-f32f526f509a HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48562 - "OPTIONS /api/quotes/f83cd747-87ef-4634-a7d3-f32f526f509a/approve HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48562 - "POST /api/quotes/f83cd747-87ef-4634-a7d3-f32f526f509a/approve HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48564 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48580 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58792 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58792 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58792 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58792 - "GET /api/quotes/track/f83cd747-87ef-4634-a7d3-f32f526f509a HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58802 - "GET /api/quotes/track/f83cd747-87ef-4634-a7d3-f32f526f509a HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44318 - "GET /api/quotes/f83cd747-87ef-4634-a7d3-f32f526f509a/pdf HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38278 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38290 - "GET /api/history HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/db/models.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [43066]
+INFO:     Started server process [43898]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/api/quote.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [43898]
+INFO:     Started server process [44152]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/api/invoice.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [44152]
+INFO:     Started server process [44369]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/api/quote.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [44369]
+INFO:     Started server process [44707]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [44707]
+INFO:     Stopping reloader process [30619]

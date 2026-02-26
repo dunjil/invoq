@@ -98,6 +98,8 @@ class Quote(SQLModel, table=True):
     status: str = Field(default="draft") # draft, sent, viewed, needs_revision, approved, converted, bounced
     version: int = Field(default=1)
     
+    contract_id: Optional[str] = Field(default=None, foreign_key="contracts.id", index=True, nullable=True)
+    
     tracked_link_token: str = Field(default_factory=lambda: str(uuid.uuid4()))
     
     sent_at: Optional[datetime] = None
@@ -158,6 +160,7 @@ class Invoice(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: Optional[str] = Field(default=None, index=True)
     quote_id: Optional[str] = Field(default=None, foreign_key="quotes.id", index=True, nullable=True)
+    contract_id: Optional[str] = Field(default=None, foreign_key="contracts.id", index=True, nullable=True)
 
     extracted_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     status: str = Field(default="draft") # draft, sent, viewed, acknowledged, paid, overdue
@@ -308,3 +311,57 @@ class ExtractionLog(SQLModel, table=True):
     items_extracted: int = 0
     response_time_ms: int = 0  # how long the API call took
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+class Contract(SQLModel, table=True):
+    """Generated contract or NDA record."""
+    __tablename__ = "contracts"
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)
+
+    type: str = Field(default="contract") # contract, nda, msa, sow
+    status: str = Field(default="draft") # draft, sent, viewed, needs_revision, approved, signed, bounced
+    version: int = Field(default=1)
+
+    tracked_link_token: str = Field(default_factory=lambda: str(uuid.uuid4()), unique=True, index=True)
+
+    sent_at: Optional[datetime] = None
+    viewed_at: Optional[datetime] = None
+    approved_at: Optional[datetime] = None
+    signed_at: Optional[datetime] = None
+    effective_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+
+    # Render fields
+    contract_number: Optional[str] = None
+    title: str = "Agreement"
+    
+    from_name: Optional[str] = None
+    to_name: Optional[str] = None
+    
+    body_text: str = Field(default="", sa_column=Column(Text))
+    notes: Optional[str] = None
+
+    # Signatures
+    signature_data: Optional[str] = Field(default=None, sa_column=Column(Text))
+    client_signature_data: Optional[str] = Field(default=None, sa_column=Column(Text))
+    
+    # Audit fields for signatures
+    signer_ip_address: Optional[str] = None
+    signer_user_agent: Optional[str] = None
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ContractComment(SQLModel, table=True):
+    """Comments or revision requests left on a contract."""
+    __tablename__ = "contract_comments"
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    contract_id: str = Field(foreign_key="contracts.id", index=True)
+    author_id: str = Field(index=True)
+    author_name: str = Field(default="Anonymous")
+    author_role: str # "freelancer" or "client"
+    body: str = Field(sa_column=Column(Text))
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)

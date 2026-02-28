@@ -18,7 +18,8 @@ from app.api.admin import router as admin_router
 from app.api.quote import router as quote_router
 from app.api.client import router as client_router
 from app.api.address_book import router as address_book_router
-from app.api.contract import router as contract_router
+from app.api.documents import router as documents_router
+from app.api.dashboard import router as dashboard_router
 
 
 @asynccontextmanager
@@ -57,7 +58,8 @@ app.include_router(admin_router)
 app.include_router(quote_router)
 app.include_router(client_router)
 app.include_router(address_book_router)
-app.include_router(contract_router)
+app.include_router(documents_router)
+app.include_router(dashboard_router)
 
 
 @app.get("/health")

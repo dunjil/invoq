@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.session import get_session
-from app.db.models import User, ActivityLog
+from app.db.models import User, ActivityLog, Relationship, Quote, Invoice, Document
 from app.services.geoip_service import GeoIPService
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -30,6 +30,7 @@ class RegisterRequest(BaseModel):
     email: str = Field(..., max_length=255)
     password: str = Field(..., min_length=6, max_length=128)
     name: str = Field(default="", max_length=100)
+    claim_token: Optional[str] = None # V8: For invocation onboarding
 
 
 class LoginRequest(BaseModel):
@@ -115,6 +116,44 @@ async def register(
     session.add(user)
     await session.commit()
     await session.refresh(user)
+
+    # V8: Handle token claiming
+    if data.claim_token:
+        # Check Quotes, Invoices, Contracts
+        # Note: In a larger app, we'd have a specific table for tokens or a polymorphic lookup.
+        # For V8, we check all three document types.
+        
+        # 1. Check Quotes
+        q_result = await session.execute(select(Quote).where(Quote.tracked_token == data.claim_token))
+        quote = q_result.scalars().first()
+        if quote and quote.relationship_id:
+            rel_result = await session.execute(select(Relationship).where(Relationship.id == quote.relationship_id))
+            rel = rel_result.scalars().first()
+            if rel:
+                rel.recipient_id = user.id
+                quote.recipient_id = user.id
+        
+        # 2. Check Invoices
+        i_result = await session.execute(select(Invoice).where(Invoice.tracked_token == data.claim_token))
+        inv = i_result.scalars().first()
+        if inv and inv.relationship_id:
+            rel_result = await session.execute(select(Relationship).where(Relationship.id == inv.relationship_id))
+            rel = rel_result.scalars().first()
+            if rel:
+                rel.recipient_id = user.id
+                inv.recipient_id = user.id
+
+        # 3. Check Documents (Contract, NDA, etc.)
+        c_result = await session.execute(select(Document).where(Document.tracked_link_token == data.claim_token))
+        doc = c_result.scalars().first()
+        if doc and doc.relationship_id:
+            rel_result = await session.execute(select(Relationship).where(Relationship.id == doc.relationship_id))
+            rel = rel_result.scalars().first()
+            if rel:
+                rel.recipient_id = user.id
+                doc.recipient_id = user.id # NEW: documents now have recipient_id too for portfolio view
+        
+        await session.commit()
 
     # Get geo data
     ip = request.client.host if request.client else None

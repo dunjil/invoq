@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     temp_file_dir: str = "/tmp/invoq"
     secret_key: str = "change-me-to-a-random-secret"
+    frontend_url: str = "http://localhost:3000"
+
+    # Resend (Email)
+    resend_api_key: str = ""
 
     # Stripe
     stripe_secret_key: str = ""

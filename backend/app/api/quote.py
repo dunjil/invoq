@@ -13,9 +13,11 @@ from sqlalchemy.future import select
 from sqlalchemy import delete
 
 from app.db.session import get_session
-from app.db.models import User, Quote, QuoteLineItem, QuoteComment, Invoice, InvoiceLineItem
 from app.api.deps import get_optional_user, get_current_user
 from app.api.invoice import generate_invoice_html, InvoiceRequest, InvoiceAddress, InvoiceItem
+from app.services.email_service import EmailService
+from app.services.relationship_service import RelationshipService
+from app.db.models import User, Quote, QuoteLineItem, QuoteComment, Invoice, InvoiceLineItem, Relationship
 from weasyprint import HTML
 
 router = APIRouter(prefix="/api/quotes", tags=["quotes"])
@@ -38,6 +40,8 @@ class QuoteCreateRequest(BaseModel):
     notes: Optional[str] = None
     items: List[dict] = []
     extracted_json: Optional[dict] = None
+    relationship_id: Optional[str] = None
+    recipient_email: Optional[str] = None
 
 
 @router.post("")
@@ -47,21 +51,37 @@ async def create_quote(
     session: AsyncSession = Depends(get_session),
 ):
     """Save a new quote and generate a tracking token."""
+    # V8: Resolve or create relationship
+    rel_id = data.relationship_id
+    if not rel_id and data.recipient_email:
+        rel = await RelationshipService.get_or_create_relationship(
+            session, user.id, data.recipient_email, "freelancer_individual"
+        )
+        rel_id = rel.id
+
     new_quote = Quote(
         user_id=user.id,
+        issuer_id=user.id,
+        relationship_id=rel_id,
+        recipient_email=data.recipient_email,
         status="sent",
         quote_number=data.quote_number,
         quote_date=data.quote_date,
         due_date=data.due_date,
         from_name=data.from_name,
+        from_details=data.from_details,
         to_name=data.to_name,
+        to_details=data.to_details,
         currency=data.currency,
         currency_symbol=data.currency_symbol,
         subtotal=data.subtotal,
         tax_total=data.tax_total,
         total=data.total,
         notes=data.notes,
+        line_items_json={"items": data.items},
         extracted_json=data.extracted_json or {"items": data.items},
+        issuer_signature_base64=data.signature_data if hasattr(data, 'signature_data') else None,
+        recipient_signature_base64=data.client_signature_data if hasattr(data, 'client_signature_data') else None,
         sent_at=datetime.utcnow()
     )
     session.add(new_quote)
@@ -81,10 +101,21 @@ async def create_quote(
     
     await session.commit()
 
+    await session.commit()
+
+    # V8: Launch Invocation Email
+    if data.recipient_email:
+        await EmailService.send_invocation_email(
+            sender_name=data.from_name or user.name or "A contractor",
+            recipient_email=data.recipient_email,
+            document_type="quote",
+            token=new_quote.tracked_token
+        )
+
     return {
         "success": True,
         "quote_id": new_quote.id,
-        "tracked_link_token": new_quote.tracked_link_token
+        "tracked_link_token": new_quote.tracked_token
     }
 
 
@@ -94,7 +125,7 @@ async def get_quote_by_token(
     session: AsyncSession = Depends(get_session),
 ):
     """Public endpoint for clients to view a quote by tracked link."""
-    result = await session.execute(select(Quote).where(Quote.tracked_link_token == token))
+    result = await session.execute(select(Quote).where(Quote.tracked_token == token))
     quote = result.scalars().first()
     
     if not quote:
@@ -133,7 +164,7 @@ async def download_dynamic_quote_pdf(
     session: AsyncSession = Depends(get_session),
 ):
     """Dynamically reconstruct and render the PDF for a quote."""
-    result = await session.execute(select(Quote).where(Quote.tracked_link_token == token))
+    result = await session.execute(select(Quote).where(Quote.tracked_token == token))
     quote = result.scalars().first()
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
@@ -153,8 +184,8 @@ async def download_dynamic_quote_pdf(
         currency_symbol=quote.currency_symbol,
         notes=quote.notes,
         primary_color="#D4A017",
-        signature_data=quote.signature_data,
-        client_signature_data=quote.client_signature_data,
+        signature_data=quote.issuer_signature_base64,
+        client_signature_data=quote.recipient_signature_base64,
         items=[
             InvoiceItem(description=i.description, quantity=i.quantity, unit_price=i.unit_price, tax_rate=i.tax_rate) 
             for i in items
@@ -179,7 +210,7 @@ async def update_quote(
     session: AsyncSession = Depends(get_session),
 ):
     """Edit the entire quote document dynamically."""
-    result = await session.execute(select(Quote).where(Quote.tracked_link_token == token))
+    result = await session.execute(select(Quote).where(Quote.tracked_token == token))
     quote = result.scalars().first()
     
     if not quote or quote.user_id != user.id:
@@ -196,6 +227,8 @@ async def update_quote(
     quote.tax_total = data.tax_total
     quote.total = data.total
     quote.notes = data.notes
+    quote.issuer_signature_base64 = data.signature_data if hasattr(data, 'signature_data') else None
+    quote.recipient_signature_base64 = data.client_signature_data if hasattr(data, 'client_signature_data') else None
     quote.extracted_json = data.extracted_json or {"items": data.items}
 
     # Delete existing line items
@@ -228,7 +261,7 @@ async def approve_quote(
     session: AsyncSession = Depends(get_session),
 ):
     """Client approves the quote. Auto-converts to an invoice."""
-    result = await session.execute(select(Quote).where(Quote.tracked_link_token == token))
+    result = await session.execute(select(Quote).where(Quote.tracked_token == token))
     quote = result.scalars().first()
     
     if not quote:
@@ -241,7 +274,7 @@ async def approve_quote(
     quote.approved_at = datetime.utcnow()
     if data.signature_data:
         quote.signed_at = datetime.utcnow()
-        quote.client_signature_data = data.signature_data
+        quote.recipient_signature_base64 = data.signature_data
     
     await session.commit()
     
@@ -249,21 +282,28 @@ async def approve_quote(
     inv_number = quote.quote_number.replace("QT", "INV") if "QT" in quote.quote_number else f"INV-{quote.quote_number}"
     new_invoice = Invoice(
         user_id=quote.user_id,
+        issuer_id=quote.issuer_id,
+        recipient_id=quote.recipient_id,
+        relationship_id=quote.relationship_id,
         quote_id=quote.id,
         status="draft",
         invoice_number=inv_number,
         invoice_date=datetime.utcnow().strftime("%Y-%m-%d"),
         due_date=quote.due_date,
         from_name=quote.from_name or "",
+        from_details=quote.from_details,
         to_name=quote.to_name or "",
+        to_details=quote.to_details,
         subtotal=quote.subtotal,
         tax_total=quote.tax_total,
+        tax_amount=quote.tax_total,
         total=quote.total,
         currency=quote.currency,
         currency_symbol=quote.currency_symbol,
         notes=quote.notes,
-        signature_data=quote.signature_data,
-        client_signature_data=quote.client_signature_data,
+        issuer_signature_base64=quote.issuer_signature_base64,
+        recipient_signature_base64=quote.recipient_signature_base64,
+        line_items_json=quote.line_items_json,
         extracted_json=quote.extracted_json
     )
     session.add(new_invoice)
@@ -299,6 +339,8 @@ class CommentRequest(BaseModel):
     author_name: str
     body: str
     author_role: str = "client"
+    element_reference: Optional[str] = None # Line item/Clause link
+    comment_type: str = "Question" # Question, Change Request, Clarification
 
 @router.post("/{token}/comments")
 async def add_comment(
@@ -307,7 +349,7 @@ async def add_comment(
     session: AsyncSession = Depends(get_session),
 ):
     """Add a comment/correction request to the quote."""
-    result = await session.execute(select(Quote).where(Quote.tracked_link_token == token))
+    result = await session.execute(select(Quote).where(Quote.tracked_token == token))
     quote = result.scalars().first()
     
     if not quote:
@@ -318,7 +360,9 @@ async def add_comment(
         author_id="anonymous_client" if data.author_role == "client" else quote.user_id,
         author_name=data.author_name,
         author_role=data.author_role,
-        body=data.body
+        body=data.body,
+        element_reference=data.element_reference,
+        comment_type=data.comment_type
     )
     session.add(comment)
     
@@ -329,6 +373,50 @@ async def add_comment(
     return {"success": True, "message": "Comment added successfully."}
 
 
+class QuoteRejectRequest(BaseModel):
+    category: str = Field(..., description="Amount incorrect, Timeline wrong, Scope unclear, etc.")
+    reason: str
+    notes: Optional[str] = None
+    context_block: Optional[dict] = None
+
+@router.post("/{token}/reject")
+async def reject_quote(
+    token: str,
+    data: QuoteRejectRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """Structured rejection of a quote with mandatory reason and category."""
+    result = await session.execute(select(Quote).where(Quote.tracked_token == token))
+    quote = result.scalars().first()
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+        
+    quote.status = "needs_revision"
+    quote.rejection_reason = data.reason
+    quote.rejection_category = data.category
+    
+    await session.commit()
+    
+    # Notify issuer
+    issuer_result = await session.execute(select(User).where(User.id == quote.issuer_id))
+    issuer = issuer_result.scalars().first()
+    
+    if issuer:
+        await EmailService.send_rejection_notification(
+            sender_name=quote.to_name or "A client",
+            recipient_email=issuer.email,
+            document_type="quote",
+            document_number=quote.quote_number or "N/A",
+            reason=data.reason,
+            category=data.category,
+            notes=data.notes,
+            context_block=data.context_block
+        )
+    
+    return {"success": True, "message": "Quote marked as needs revision and issuer notified."}
+
+
 @router.post("/{token}/request-review")
 async def request_review_quote(
     token: str,
@@ -336,7 +424,7 @@ async def request_review_quote(
     session: AsyncSession = Depends(get_session),
 ):
     """Explicitly mark quote as sent/review requested."""
-    result = await session.execute(select(Quote).where(Quote.tracked_link_token == token))
+    result = await session.execute(select(Quote).where(Quote.tracked_token == token))
     quote = result.scalars().first()
     
     if not quote or quote.user_id != user.id:

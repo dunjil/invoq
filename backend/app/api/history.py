@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc
 
 from app.db.session import get_session
-from app.db.models import User, Invoice, Quote, InvoiceComment, QuoteComment, Contract
+from app.db.models import User, Invoice, Quote, InvoiceComment, QuoteComment, Document, DocumentComment
 from app.api.deps import get_current_user
 from sqlalchemy import func
 
@@ -48,14 +48,14 @@ async def list_documents(
     )
     invoices = inv_result.scalars().all()
     
-    # Fetch Contracts
-    contract_res = await session.execute(
-        select(Contract)
-        .where(Contract.user_id == user.id)
-        .order_by(desc(Contract.created_at))
+    # Fetch Documents (Contract, NDA, etc.)
+    doc_res = await session.execute(
+        select(Document)
+        .where(Document.user_id == user.id)
+        .order_by(desc(Document.created_at))
         .limit(100)
     )
-    contracts = contract_res.scalars().all()
+    documents_raw = doc_res.scalars().all()
     
     # Fetch quotes
     quote_result = await session.execute(
@@ -83,6 +83,14 @@ async def list_documents(
         .group_by(QuoteComment.quote_id)
     ) if quote_ids else []
     quote_comment_counts = dict(quote_comments_res.all()) if quote_ids else {}
+
+    doc_ids = [d.id for d in documents_raw]
+    doc_comments_res = await session.execute(
+        select(DocumentComment.document_id, func.count(DocumentComment.id))
+        .where(DocumentComment.document_id.in_(doc_ids))
+        .group_by(DocumentComment.document_id)
+    ) if doc_ids else []
+    doc_comment_counts = dict(doc_comments_res.all()) if doc_ids else {}
 
     # Merge and map
     documents = []
@@ -116,20 +124,20 @@ async def list_documents(
             "comment_count": quote_comment_counts.get(q.id, 0)
         })
 
-    # Add contracts
-    for c in contracts:
+    # Add documents
+    for c in documents_raw:
         documents.append({
             "id": c.id,
             "token": c.tracked_link_token,
             "type": c.type.upper(), # contract, nda, msa
-            "document_number": c.contract_number or "Draft",
-            "document_date": c.created_at.isoformat(), # Using created_at as document_date for contracts
+            "document_number": c.document_number or "Draft",
+            "document_date": c.created_at.isoformat(), # Using created_at as document_date
             "to_name": c.to_name or "Unknown Client",
-            "total": 0.0, # Contracts don't typically have a 'total' field in the same way invoices/quotes do
-            "currency_symbol": "", # Contracts don't typically have a currency_symbol
+            "total": 0.0,
+            "currency_symbol": "",
             "status": c.status,
             "created_at": c.created_at,
-            "comment_count": 0 # Contracts don't have comments yet
+            "comment_count": doc_comment_counts.get(c.id, 0)
         })
         
     # Sort merged result by created_at descending

@@ -24,8 +24,8 @@ class ProfileRequest(BaseModel):
     address: Optional[str] = Field(default=None, max_length=500)
     email: Optional[str] = Field(default=None, max_length=100)
     phone: Optional[str] = Field(default=None, max_length=30)
-    logo_url: Optional[str] = None          # base64
-    signature_data: Optional[str] = None    # base64
+    logo_base64: Optional[str] = None          # base64
+    signature_base64: Optional[str] = None    # base64
     primary_color: str = "#D4A017"
     default_currency: str = "USD"
     default_currency_symbol: str = "$"
@@ -50,8 +50,8 @@ class ProfileResponse(BaseModel):
     address: Optional[str]
     email: Optional[str]
     phone: Optional[str]
-    logo_url: Optional[str]
-    signature_data: Optional[str]
+    logo_base64: Optional[str]
+    signature_base64: Optional[str]
     primary_color: str
     default_currency: str
     default_currency_symbol: str
@@ -75,8 +75,8 @@ def _to_response(p: BusinessProfile) -> ProfileResponse:
         address=p.address,
         email=p.email,
         phone=p.phone,
-        logo_url=p.logo_url,
-        signature_data=p.signature_data,
+        logo_base64=p.logo_base64,
+        signature_base64=p.signature_base64,
         primary_color=p.primary_color,
         default_currency=p.default_currency,
         default_currency_symbol=p.default_currency_symbol,
@@ -99,8 +99,8 @@ def _apply_data(profile: BusinessProfile, data: ProfileRequest):
     profile.address = data.address
     profile.email = data.email
     profile.phone = data.phone
-    profile.logo_url = data.logo_url
-    profile.signature_data = data.signature_data
+    profile.logo_base64 = data.logo_base64
+    profile.signature_base64 = data.signature_base64
     profile.primary_color = data.primary_color
     profile.default_currency = data.default_currency
     profile.default_currency_symbol = data.default_currency_symbol

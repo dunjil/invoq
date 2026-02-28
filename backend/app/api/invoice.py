@@ -15,11 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.session import get_session
-from app.db.models import User, Invoice as InvoiceModel, InvoiceComment, InvoiceLineItem
+from app.db.models import User, Invoice as InvoiceModel, InvoiceComment, InvoiceLineItem, Relationship, PaymentRecord
 from app.api.deps import get_optional_user, get_current_user
 from sqlalchemy.future import select
 from sqlalchemy import delete
 from app.services.usage import check_usage, record_usage, should_watermark
+from app.services.email_service import EmailService
+from app.services.tax_service import TaxService
+from app.services.trust_service import TrustService
+from app.services.relationship_service import RelationshipService
 
 router = APIRouter(prefix="/api/invoice", tags=["invoice"])
 
@@ -75,8 +79,8 @@ class InvoiceRequest(BaseModel):
     terms: Optional[str] = Field(default=None, max_length=1000)
     amount_in_words: Optional[str] = Field(default=None, max_length=200)
     logo_url: Optional[str] = None
-    signature_data: Optional[str] = None
-    client_signature_data: Optional[str] = None
+    signature_data: Optional[str] = None # V8: issuer_signature_base64
+    client_signature_data: Optional[str] = None # V8: recipient_signature_base64
 
     primary_color: str = "#3498db"
     template: str = "modern"
@@ -84,6 +88,8 @@ class InvoiceRequest(BaseModel):
     show_signature_section: bool = True
 
     watermark: Optional[WatermarkConfig] = None
+    relationship_id: Optional[str] = None
+    recipient_email: Optional[str] = None
 
 
 class InvoiceResponse(BaseModel):
@@ -416,10 +422,20 @@ async def generate_invoice(
         # Record usage for logged-in users
         await record_usage(user, session)
 
-        # Save to history for logged-in users
+        # V8: Resolve or create relationship
+        rel_id = data.relationship_id
+        if not rel_id and data.recipient_email and user:
+            rel = await RelationshipService.get_or_create_relationship(
+                session, user.id, data.recipient_email, "freelancer_individual"
+            )
+            rel_id = rel.id
+
         if user:
             invoice_record = InvoiceModel(
                 user_id=user.id,
+                issuer_id=user.id,
+                relationship_id=rel_id,
+                recipient_email=data.recipient_email,
                 invoice_number=data.invoice_number,
                 invoice_date=data.invoice_date,
                 due_date=data.due_date,
@@ -427,27 +443,27 @@ async def generate_invoice(
                 from_details=data.from_address.address_line1,
                 to_name=data.to_address.name,
                 to_details=data.to_address.address_line1,
-                items={"items": [item.model_dump() for item in data.items]},
                 currency=data.currency,
                 currency_symbol=data.currency_symbol,
                 subtotal=subtotal,
                 tax_total=tax_total,
+                tax_amount=tax_total,
                 total=total,
                 notes=data.notes,
                 primary_color=data.primary_color,
-                signature_data=data.signature_data,
-                client_signature_data=data.client_signature_data,
+                issuer_signature_base64=data.signature_data,
+                recipient_signature_base64=data.client_signature_data,
                 pdf_filename=filename,
-                status="sent",
-                sent_at=datetime.utcnow()
+                status="sent", # Default status
+                sent_at=datetime.utcnow() # Default sent_at
             )
             session.add(invoice_record)
             await session.commit()
             await session.refresh(invoice_record)
-
-            # Copy line items for structured data tracking
+            
+            # Save line items for easier querying
             for item in data.items:
-                inv_item = InvoiceLineItem(
+                line_item = InvoiceLineItem(
                     invoice_id=invoice_record.id,
                     description=item.description,
                     quantity=item.quantity,
@@ -455,19 +471,39 @@ async def generate_invoice(
                     tax_rate=item.tax_rate,
                     total=item.quantity * item.unit_price
                 )
-                session.add(inv_item)
+                session.add(line_item)
             await session.commit()
 
-        return InvoiceResponse(
-            success=True,
-            download_url=f"/api/invoice/download/{filename}",
-            invoice_number=data.invoice_number,
-            subtotal=subtotal,
-            tax_total=tax_total,
-            total=total,
-            tracked_link_token=invoice_record.tracked_link_token if user else None,
-            invoice_id=invoice_record.id if user else None,
-        )
+            # V8: Launch Invocation Email
+            if data.recipient_email:
+                await EmailService.send_invocation_email(
+                    sender_name=data.from_address.name or user.name or "A contractor",
+                    recipient_email=data.recipient_email,
+                    document_type="invoice",
+                    token=invoice_record.tracked_link_token
+                )
+
+            return InvoiceResponse(
+                success=True, 
+                download_url=f"/api/invoice/download/{filename}",
+                invoice_number=data.invoice_number,
+                total=total,
+                subtotal=subtotal,
+                tax_total=tax_total,
+                invoice_id=invoice_record.id,
+                tracked_link_token=invoice_record.tracked_link_token
+            )
+        else: # For non-logged-in users, just return the download URL
+            return InvoiceResponse(
+                success=True,
+                download_url=f"/api/invoice/download/{filename}",
+                invoice_number=data.invoice_number,
+                subtotal=subtotal,
+                tax_total=tax_total,
+                total=total,
+                tracked_link_token=None,
+                invoice_id=None,
+            )
 
     except Exception as e:
         return InvoiceResponse(success=False, error=str(e))
@@ -541,13 +577,13 @@ async def get_invoice_by_token(
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
         
-    # Pass current user if authenticated
-    try:
-        from app.api.deps import get_current_user_optional
-        current_user = await get_current_user_optional(session, token=None) # We don't have the token in header here easily if it's a public link, but let's try
-    except:
-        current_user = None
-
+    # V8 logic for user/relationship association
+    user = await get_optional_user(authorization=None) # We don't have the string easily here without deps, but the endpoint handles it.
+    
+    # We'll rely on the caller passing the correct user context. 
+    # In the @router.post endpoint below, we have the 'user' object.
+    
+    # We'll move the DB record creation logic into the endpoint to make it cleaner with session/user.
     # Mark as viewed if first time AND not the creator
     if not invoice.viewed_at and (not current_user or current_user.id != invoice.user_id):
         invoice.viewed_at = datetime.utcnow()
@@ -591,9 +627,9 @@ async def download_dynamic_invoice_pdf(
         currency=invoice.currency,
         currency_symbol=invoice.currency_symbol,
         notes=invoice.notes,
-        primary_color=invoice.primary_color,
-        signature_data=invoice.signature_data,
-        client_signature_data=invoice.client_signature_data,
+        primary_color="#D4A017",
+        signature_data=invoice.issuer_signature_base64,
+        client_signature_data=invoice.recipient_signature_base64,
         items=[
             InvoiceItem(description=i.description, quantity=i.quantity, unit_price=i.unit_price, tax_rate=i.tax_rate) 
             for i in items
@@ -640,8 +676,8 @@ async def update_invoice(
     invoice.total = total
     invoice.notes = data.notes
     invoice.primary_color = data.primary_color
-    invoice.signature_data = data.signature_data
-    invoice.client_signature_data = data.client_signature_data
+    invoice.issuer_signature_base64 = data.signature_data
+    invoice.recipient_signature_base64 = data.client_signature_data
 
     # Delete existing line items
     await session.execute(delete(InvoiceLineItem).where(InvoiceLineItem.invoice_id == invoice.id))
@@ -712,6 +748,8 @@ class InvoiceCommentRequest(BaseModel):
     author_name: str
     body: str
     author_role: str = "client"
+    element_reference: Optional[str] = None # Clause/Item link
+    comment_type: str = "Question" # Question, Change Request, Clarification
 
 @router.post("/{token}/comments")
 async def add_invoice_comment(
@@ -731,10 +769,114 @@ async def add_invoice_comment(
         author_id="anonymous_client" if data.author_role == "client" else invoice.user_id,
         author_name=data.author_name,
         author_role=data.author_role,
-        body=data.body
+        body=data.body,
+        element_reference=data.element_reference,
+        comment_type=data.comment_type
     )
     session.add(comment)
     await session.commit()
     
+    # Notify creator if client commented
+    if data.author_role == "client":
+        invoice.status = "needs_revision"
+        await session.commit()
+    
     return {"success": True, "message": "Comment added successfully."}
+
+
+class InvoiceRejectRequest(BaseModel):
+    category: str = Field(..., description="Amount incorrect, Date range wrong, Missing information, etc.")
+    reason: str
+    notes: Optional[str] = None
+    context_block: Optional[dict] = None # { "field": "Amount", "current": "$2000", "requested": "$1500" }
+
+@router.post("/{token}/reject")
+async def reject_invoice(
+    token: str,
+    data: InvoiceRejectRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """Structured rejection of an invoice with mandatory reason and category."""
+    result = await session.execute(select(InvoiceModel).where(InvoiceModel.tracked_link_token == token))
+    invoice = result.scalars().first()
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    invoice.status = "rejected"
+    invoice.rejection_reason = data.reason
+    invoice.rejection_category = data.category
+    
+    await session.commit()
+    
+    # Notify issuer with structured feedback
+    # We need to find the issuer's email. In V8, we often have the issuer_id.
+    issuer_result = await session.execute(select(User).where(User.id == invoice.issuer_id))
+    issuer = issuer_result.scalars().first()
+    
+    if issuer:
+        await EmailService.send_rejection_notification(
+            sender_name=invoice.to_name or "A client",
+            recipient_email=issuer.email,
+            document_type="invoice",
+            document_number=invoice.invoice_number or "N/A",
+            reason=data.reason,
+            category=data.category,
+            notes=data.notes,
+            context_block=data.context_block
+        )
+    
+    return {"success": True, "message": "Invoice rejected and issuer notified."}
+
+
+class InvoicePaidRequest(BaseModel):
+    confirmed_by_id: Optional[str] = None
+    method_note: Optional[str] = None
+
+
+@router.post("/{token}/paid")
+async def mark_invoice_as_paid(
+    token: str,
+    data: InvoicePaidRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """Marks an invoice as paid, records the payment, and updates trust metrics."""
+    result = await session.execute(select(InvoiceModel).where(InvoiceModel.tracked_link_token == token))
+    invoice = result.scalars().first()
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    if invoice.status == "paid":
+        return {"success": False, "error": "Invoice is already marked as paid."}
+
+    invoice.status = "paid"
+    invoice.paid_at = datetime.utcnow()
+    
+    # 1. Create Payment Record
+    payment = PaymentRecord(
+        invoice_id=invoice.id,
+        relationship_id=invoice.relationship_id or "",
+        amount=invoice.total,
+        currency=invoice.currency,
+        paid_at=invoice.paid_at,
+        confirmed_by_id=data.confirmed_by_id or invoice.recipient_id or invoice.issuer_id, # Fallback to issuer if client is anon
+        method_note=data.method_note
+    )
+    session.add(payment)
+    await session.commit()
+    await session.refresh(payment)
+
+    # 2. Update Tax Ledger
+    await TaxService.record_payment(session, payment)
+
+    # 3. Update Trust Metrics for the Issuer
+    await TrustService.update_metrics(session, invoice.issuer_id)
+
+    return {
+        "success": True,
+        "message": "Payment confirmed. Ledger and trust metrics updated.",
+        "payment_id": payment.id
+    }
+
 

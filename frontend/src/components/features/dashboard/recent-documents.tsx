@@ -6,6 +6,11 @@ interface RecentDocumentsProps {
 }
 
 export function RecentDocuments({ documents }: RecentDocumentsProps) {
+    const [mounted, setMounted] = (require('react')).useState(false);
+    (require('react')).useEffect(() => {
+        setMounted(true);
+    }, []);
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -29,11 +34,14 @@ export function RecentDocuments({ documents }: RecentDocumentsProps) {
                                 <span className={`px-2 py-0.5 rounded text-[8px] font-bold tracking-widest uppercase ${doc.status === 'signed' || doc.status === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
                                     {doc.status}
                                 </span>
-                                <p className="text-[9px] text-[#8A8880] mt-1 font-mono">{new Date(doc.created_at).toLocaleDateString()}</p>
+                                <p className="text-[9px] text-[#8A8880] mt-1 font-mono">
+                                    {mounted ? new Date(doc.created_at).toLocaleDateString() : "..."}
+                                </p>
                             </div>
                         </div>
                     </Link>
                 )) : (
+
                     <div className="bg-white p-12 rounded-xl border border-dashed border-[#E8E6E0] text-center">
                         <p className="text-xs text-[#8A8880]">No recent documents found.</p>
                     </div>

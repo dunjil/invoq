@@ -28,7 +28,7 @@ export function StatsOverview({ summary }: StatsOverviewProps) {
                 <div className="h-1 bg-[#D4A017] opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2">
                     <CardTitle className="text-xs font-bold text-[#8A8880] uppercase tracking-widest flex items-center gap-2">
-                        <TrendingUp className="h-3.5 w-3.5" /> Portolio Revenue
+                        <TrendingUp className="h-3.5 w-3.5" /> Portfolio Revenue
                     </CardTitle>
                 </CardHeader>
                 <CardContent>

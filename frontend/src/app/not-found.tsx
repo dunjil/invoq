@@ -1,4 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Search, FileX2 } from "lucide-react";
 
 export default function NotFound() {
     return (
@@ -31,8 +34,15 @@ export default function NotFound() {
 
                 {/* Logo */}
                 <div className="mt-16">
-                    <Link href="/" className="text-lg font-light tracking-tight" style={{ fontFamily: "var(--font-heading)", color: "#8A8880" }}>
-                        Inv<span className="text-[#D4A017]/50">oq</span>
+                    <Link href="/">
+                        <div className="relative h-7 w-28 mx-auto hover:opacity-80 transition-opacity">
+                            <Image
+                                src="/images/invoq-logo-transparent.png"
+                                alt="INVOQ"
+                                fill
+                                className="object-contain"
+                            />
+                        </div>
                     </Link>
                 </div>
             </div>

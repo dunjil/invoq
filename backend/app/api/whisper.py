@@ -7,13 +7,11 @@ from typing import Optional
 
 from app.config import settings
 
+# Schemas
+from app.schemas.whisper import TranscriptionResponse
+
+
 router = APIRouter(prefix="/api/whisper", tags=["whisper"])
-
-
-class TranscriptionResponse(BaseModel):
-    success: bool
-    transcript: Optional[str] = None
-    error: Optional[str] = None
 
 
 @router.post("/transcribe", response_model=TranscriptionResponse)

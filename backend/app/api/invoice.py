@@ -24,6 +24,11 @@ from app.services.email_service import EmailService
 from app.services.tax_service import TaxService
 from app.services.trust_service import TrustService
 from app.services.relationship_service import RelationshipService
+from app.services.docx_service import DOCXService
+
+# Schemas
+from app.schemas.invoice import InvoiceItem, InvoiceAddress, WatermarkConfig, InvoiceRequest, InvoiceResponse, InvoiceDisputeRequest, InvoiceAcknowledgeRequest, InvoiceCommentRequest, InvoiceRejectRequest, InvoicePaidRequest
+
 
 router = APIRouter(prefix="/api/invoice", tags=["invoice"])
 
@@ -32,79 +37,6 @@ TEMP_DIR = settings.temp_file_dir
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
 
-
-class InvoiceItem(BaseModel):
-    description: str = Field(..., max_length=200)
-    quantity: float = Field(..., gt=0)
-    unit_price: float = Field(..., ge=0)
-    tax_rate: float = Field(default=0, ge=0, le=100)
-
-
-class InvoiceAddress(BaseModel):
-    name: str = Field(..., max_length=100)
-    address_line1: str = Field(default="", max_length=200)
-    address_line2: Optional[str] = Field(default=None, max_length=200)
-    city: str = Field(default="", max_length=100)
-    state: Optional[str] = Field(default=None, max_length=100)
-    postal_code: str = Field(default="", max_length=20)
-    country: str = Field(default="", max_length=100)
-    email: Optional[str] = Field(default=None, max_length=100)
-    phone: Optional[str] = Field(default=None, max_length=30)
-
-
-class WatermarkConfig(BaseModel):
-    enabled: bool = False
-    content: Optional[str] = None
-    content_type: str = "text"
-    color: str = "#6b7280"
-    opacity: float = Field(default=0.15, ge=0.05, le=1.0)
-    rotation: int = Field(default=-45, ge=-90, le=90)
-    font_size: int = Field(default=60, ge=20, le=200)
-
-
-class InvoiceRequest(BaseModel):
-    title: str = Field(default="INVOICE", max_length=50)
-    invoice_number: Optional[str] = Field(default=None, max_length=50)
-    quote_number: Optional[str] = Field(default=None, max_length=50)
-    invoice_date: str
-    due_date: Optional[str] = None
-
-    from_address: InvoiceAddress
-    to_address: InvoiceAddress
-    items: List[InvoiceItem] = Field(..., min_length=1, max_length=50)
-
-    currency: str = Field(default="USD", max_length=5)
-    currency_symbol: str = Field(default="$", max_length=5)
-    notes: Optional[str] = Field(default=None, max_length=5000)
-    terms: Optional[str] = Field(default=None, max_length=1000)
-    amount_in_words: Optional[str] = Field(default=None, max_length=200)
-    logo_url: Optional[str] = None
-    signature_data: Optional[str] = None # V8: issuer_signature_base64
-    client_signature_data: Optional[str] = None # V8: recipient_signature_base64
-
-    primary_color: str = "#3498db"
-    template: str = "modern"
-    show_tax: bool = True
-    show_signature_section: bool = True
-
-    watermark: Optional[WatermarkConfig] = None
-    relationship_id: Optional[str] = None
-    recipient_email: Optional[str] = None
-
-
-class InvoiceResponse(BaseModel):
-    success: bool
-    download_url: Optional[str] = None
-    error: Optional[str] = None
-    invoice_number: Optional[str] = None
-    total: Optional[float] = None
-    subtotal: Optional[float] = None
-    tax_total: Optional[float] = None
-    tracked_link_token: Optional[str] = None
-    invoice_id: Optional[str] = None
-
-
-# ── Currency names ───────────────────────────────────────────────────────────
 
 CURRENCY_NAMES = {
     "USD": ("Dollar", "Dollars", "Cent", "Cents"),
@@ -435,6 +367,7 @@ async def generate_invoice(
                 user_id=user.id,
                 issuer_id=user.id,
                 relationship_id=rel_id,
+                contract_id=data.contract_id,
                 recipient_email=data.recipient_email,
                 invoice_number=data.invoice_number,
                 invoice_date=data.invoice_date,
@@ -550,6 +483,45 @@ async def preview_invoice(data: InvoiceRequest):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@router.post("/{token}/reject")
+async def dispute_invoice(
+    token: str,
+    data: InvoiceDisputeRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """Client formally disputes/rejection the invoice."""
+    result = await session.execute(
+        select(InvoiceModel).where(
+            (InvoiceModel.tracked_token == token) | (InvoiceModel.tracked_link_token == token)
+        )
+    )
+    invoice = result.scalars().first()
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    if invoice.status in ["paid", "voided"]:
+        return {"success": False, "error": "Cannot dispute an already paid or voided invoice."}
+
+    invoice.status = "disputed"
+    
+    comment = InvoiceComment(
+        invoice_id=invoice.id,
+        author_id="anonymous_client",
+        author_name=data.author_name,
+        author_role="client",
+        body=f"DISPUTE [{data.reason_code.upper()}]: {data.details}",
+        created_at=datetime.utcnow()
+    )
+    session.add(comment)
+    await session.commit()
+
+    return {
+        "success": True,
+        "message": "Invoice status updated to disputed.",
+        "status": invoice.status
+    }
+
 
 @router.get("/templates")
 async def get_templates():
@@ -568,24 +540,22 @@ async def get_templates():
 @router.get("/track/{token}")
 async def get_invoice_by_token(
     token: str,
+    user: Optional[User] = Depends(get_optional_user),
     session: AsyncSession = Depends(get_session),
 ):
     """Public endpoint for clients to view an invoice by tracked link."""
-    result = await session.execute(select(InvoiceModel).where(InvoiceModel.tracked_link_token == token))
+    result = await session.execute(
+        select(InvoiceModel).where(
+            (InvoiceModel.tracked_token == token) | (InvoiceModel.tracked_link_token == token)
+        )
+    )
     invoice = result.scalars().first()
     
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
         
-    # V8 logic for user/relationship association
-    user = await get_optional_user(authorization=None) # We don't have the string easily here without deps, but the endpoint handles it.
-    
-    # We'll rely on the caller passing the correct user context. 
-    # In the @router.post endpoint below, we have the 'user' object.
-    
-    # We'll move the DB record creation logic into the endpoint to make it cleaner with session/user.
     # Mark as viewed if first time AND not the creator
-    if not invoice.viewed_at and (not current_user or current_user.id != invoice.user_id):
+    if not invoice.viewed_at and (not user or user.id != invoice.user_id):
         invoice.viewed_at = datetime.utcnow()
         if invoice.status == "sent":
             invoice.status = "viewed"
@@ -598,7 +568,143 @@ async def get_invoice_by_token(
     return {
         "success": True,
         "invoice": invoice,
-        "items": items
+        "items": items,
+        "rendered_html": generate_invoice_html(InvoiceRequest(
+            title="INVOICE",
+            invoice_number=invoice.invoice_number,
+            invoice_date=invoice.invoice_date,
+            due_date=invoice.due_date,
+            from_address=InvoiceAddress(name=invoice.from_name or "", address_line1=invoice.from_details or ""),
+            to_address=InvoiceAddress(name=invoice.to_name or "", address_line1=invoice.to_details or ""),
+            currency=invoice.currency,
+            currency_symbol=invoice.currency_symbol,
+            notes=invoice.notes,
+            primary_color=invoice.primary_color or "#3498db",
+            signature_data=invoice.issuer_signature_base64,
+            client_signature_data=invoice.recipient_signature_base64,
+            items=[
+                InvoiceItem(description=i.description, quantity=i.quantity, unit_price=i.unit_price, tax_rate=i.tax_rate) 
+                for i in items
+            ]
+        ))[0]
+    }
+
+
+@router.get("/{token}/pdf")
+async def generate_invoice_pdf_by_token(
+    token: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Generate and return a PDF for the invoice."""
+    result = await session.execute(
+        select(InvoiceModel).where(
+            (InvoiceModel.tracked_token == token) | (InvoiceModel.tracked_link_token == token)
+        )
+    )
+    invoice = result.scalars().first()
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    # Load items
+    items_result = await session.execute(select(InvoiceLineItem).where(InvoiceLineItem.invoice_id == invoice.id))
+    items = items_result.scalars().all()
+
+    data = InvoiceRequest(
+        title="INVOICE",
+        invoice_number=invoice.invoice_number,
+        invoice_date=invoice.invoice_date,
+        due_date=invoice.due_date,
+        from_address=InvoiceAddress(name=invoice.from_name or "", address_line1=invoice.from_details or ""),
+        to_address=InvoiceAddress(name=invoice.to_name or "", address_line1=invoice.to_details or ""),
+        currency=invoice.currency,
+        currency_symbol=invoice.currency_symbol,
+        notes=invoice.notes,
+        primary_color=invoice.primary_color or "#3498db",
+        signature_data=invoice.issuer_signature_base64,
+        client_signature_data=invoice.recipient_signature_base64,
+        items=[
+            InvoiceItem(description=i.description, quantity=i.quantity, unit_price=i.unit_price, tax_rate=i.tax_rate) 
+            for i in items
+        ]
+    )
+    
+    # Use helper from this module
+    from app.api.invoice import generate_invoice_html
+    html_content, _, _, _ = generate_invoice_html(data)
+    
+    if should_watermark(user):
+        invoq_badge = '''<div style="position: fixed; bottom: 10px; right: 20px; opacity: 0.4; font-size: 9px; color: #999;">Made with invoq.app</div>'''
+        html_content = html_content.replace("</body>", f"{invoq_badge}</body>")
+
+    html = HTML(string=html_content)
+    pdf_bytes = html.write_pdf()
+
+    file_id = str(uuid.uuid4())
+    filename = f"invoice_{invoice.invoice_number.replace('/', '_')}_{file_id}.pdf"
+    filepath = os.path.join(TEMP_DIR, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(pdf_bytes)
+
+    return {
+        "success": True,
+        "download_url": f"/api/invoice/download/{filename}"
+    }
+
+
+@router.get("/{token}/docx")
+async def generate_invoice_docx_by_token(
+    token: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Generate and return a DOCX for the invoice."""
+    result = await session.execute(
+        select(InvoiceModel).where(
+            (InvoiceModel.tracked_token == token) | (InvoiceModel.tracked_link_token == token)
+        )
+    )
+    invoice = result.scalars().first()
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    # Prepare body text from items
+    items_result = await session.execute(select(InvoiceLineItem).where(InvoiceLineItem.invoice_id == invoice.id))
+    items = items_result.scalars().all()
+    
+    body = "### Line Items\n\n| Description | Qty | Price | Total |\n|---|---|---|---|\n"
+    for item in items:
+        body += f"| {item.description} | {item.quantity} | {item.unit_price} | {item.total} |\n"
+    
+    body += f"\n**Total: {invoice.currency_symbol}{invoice.total}**\n"
+    if invoice.notes:
+        body += f"\n#### Notes\n{invoice.notes}"
+
+    data = {
+        "title": "INVOICE",
+        "document_number": invoice.invoice_number,
+        "effective_date": invoice.invoice_date,
+        "from_name": invoice.from_name,
+        "to_name": invoice.to_name,
+        "body_text": body,
+        "primary_color": invoice.primary_color or "#3498db"
+    }
+    
+    docx_stream = DOCXService.generate_document(data)
+    
+    file_id = str(uuid.uuid4())
+    filename = f"invoice_{invoice.invoice_number.replace('/', '_')}_{file_id}.docx"
+    filepath = os.path.join(TEMP_DIR, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(docx_stream.getbuffer())
+
+    return {
+        "success": True,
+        "download_url": f"/api/invoice/download/{filename}"
     }
 
 from fastapi import Response
@@ -715,10 +821,6 @@ async def request_review_invoice(
     await session.commit()
     return {"success": True, "message": "Review requested"}
 
-class InvoiceAcknowledgeRequest(BaseModel):
-    payment_method: Optional[str] = None
-
-
 @router.post("/{token}/acknowledge")
 async def acknowledge_invoice(
     token: str,
@@ -743,13 +845,6 @@ async def acknowledge_invoice(
         "message": "Invoice acknowledged. The freelancer has been notified.",
     }
 
-
-class InvoiceCommentRequest(BaseModel):
-    author_name: str
-    body: str
-    author_role: str = "client"
-    element_reference: Optional[str] = None # Clause/Item link
-    comment_type: str = "Question" # Question, Change Request, Clarification
 
 @router.post("/{token}/comments")
 async def add_invoice_comment(
@@ -783,12 +878,6 @@ async def add_invoice_comment(
     
     return {"success": True, "message": "Comment added successfully."}
 
-
-class InvoiceRejectRequest(BaseModel):
-    category: str = Field(..., description="Amount incorrect, Date range wrong, Missing information, etc.")
-    reason: str
-    notes: Optional[str] = None
-    context_block: Optional[dict] = None # { "field": "Amount", "current": "$2000", "requested": "$1500" }
 
 @router.post("/{token}/reject")
 async def reject_invoice(
@@ -827,11 +916,6 @@ async def reject_invoice(
         )
     
     return {"success": True, "message": "Invoice rejected and issuer notified."}
-
-
-class InvoicePaidRequest(BaseModel):
-    confirmed_by_id: Optional[str] = None
-    method_note: Optional[str] = None
 
 
 @router.post("/{token}/paid")

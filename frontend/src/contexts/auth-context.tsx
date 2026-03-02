@@ -18,7 +18,7 @@ interface AuthContextType {
     token: string | null;
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
-    register: (email: string, password: string, name: string) => Promise<void>;
+    register: (email: string, password: string, name: string, claimToken?: string) => Promise<void>;
     logout: () => void;
     refreshUser: () => Promise<void>;
 }
@@ -84,11 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("invoq_user", JSON.stringify(data.user));
     };
 
-    const register = async (email: string, password: string, name: string) => {
+    const register = async (email: string, password: string, name: string, claimToken?: string) => {
         const res = await fetch(`${API_URL}/api/auth/register`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password, name }),
+            body: JSON.stringify({ email, password, name, claim_token: claimToken }),
         });
         if (!res.ok) {
             const err = await res.json();

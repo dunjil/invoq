@@ -12,59 +12,14 @@ from app.db.session import get_session
 from app.db.models import User, BusinessProfile
 from app.api.deps import get_current_user
 
+# Schemas
+from app.schemas.profile import ProfileRequest, ProfileResponse
+
+
 router = APIRouter(prefix="/api", tags=["profile"])
 
 
 # ── Schemas ──────────────────────────────────────────────────
-
-class ProfileRequest(BaseModel):
-    id: Optional[str] = None  # if provided → update existing
-    label: str = "Default"
-    name: str = Field(..., max_length=200)
-    address: Optional[str] = Field(default=None, max_length=500)
-    email: Optional[str] = Field(default=None, max_length=100)
-    phone: Optional[str] = Field(default=None, max_length=30)
-    logo_base64: Optional[str] = None          # base64
-    signature_base64: Optional[str] = None    # base64
-    primary_color: str = "#D4A017"
-    default_currency: str = "USD"
-    default_currency_symbol: str = "$"
-    default_notes: Optional[str] = Field(default=None, max_length=1000)
-    is_default: bool = False
-    # Watermark
-    watermark_enabled: bool = False
-    watermark_type: str = "text"
-    watermark_text: str = "CONFIDENTIAL"
-    watermark_image: Optional[str] = None   # base64
-    watermark_color: str = "#6B6B63"
-    watermark_opacity: float = 0.15
-    watermark_rotation: float = -45
-    watermark_font_size: int = 60
-
-
-class ProfileResponse(BaseModel):
-    id: str
-    label: str
-    is_default: bool
-    name: str
-    address: Optional[str]
-    email: Optional[str]
-    phone: Optional[str]
-    logo_base64: Optional[str]
-    signature_base64: Optional[str]
-    primary_color: str
-    default_currency: str
-    default_currency_symbol: str
-    default_notes: Optional[str]
-    watermark_enabled: bool
-    watermark_type: str
-    watermark_text: str
-    watermark_image: Optional[str]
-    watermark_color: str
-    watermark_opacity: float
-    watermark_rotation: float
-    watermark_font_size: int
-
 
 def _to_response(p: BusinessProfile) -> ProfileResponse:
     return ProfileResponse(
@@ -184,9 +139,14 @@ async def create_or_update_profile(
 ):
     """Create or update a business profile.
 
-    If data.id is provided, updates that profile.
-    Otherwise creates a new one.
+    Premium Feature: Only Pro users can save and reuse profiles.
     """
+    if user.subscription_status != "pro":
+        raise HTTPException(
+            status_code=403, 
+            detail="Business profiles are a Pro feature. Please upgrade to save and reuse profiles."
+        )
+
     if data.id:
         # Update existing
         result = await session.execute(
@@ -230,6 +190,12 @@ async def update_profile(
     session: AsyncSession = Depends(get_session),
 ):
     """Update a specific profile."""
+    if user.subscription_status != "pro":
+        raise HTTPException(
+            status_code=403, 
+            detail="Business profiles are a Pro feature. Please upgrade to save and reuse profiles."
+        )
+
     result = await session.execute(
         select(BusinessProfile)
         .where(BusinessProfile.id == profile_id, BusinessProfile.user_id == user.id)

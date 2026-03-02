@@ -20,6 +20,9 @@ from app.api.client import router as client_router
 from app.api.address_book import router as address_book_router
 from app.api.documents import router as documents_router
 from app.api.dashboard import router as dashboard_router
+from app.api.metrics import router as metrics_router
+from app.api.onboarding import router as onboarding_router
+from app.api.tax import router as tax_router
 
 
 @asynccontextmanager
@@ -60,6 +63,9 @@ app.include_router(client_router)
 app.include_router(address_book_router)
 app.include_router(documents_router)
 app.include_router(dashboard_router)
+app.include_router(metrics_router)
+app.include_router(onboarding_router)
+app.include_router(tax_router)
 
 
 @app.get("/health")

@@ -16,6 +16,19 @@ class DocumentService:
         rel_id: Optional[str] = None
     ) -> Document:
         """Create a new document and its initial version."""
+        # V8: Fetch user to copy defaults if missing
+        result = await session.execute(select(User).where(User.id == creator_id))
+        user = result.scalars().first()
+        
+        if user:
+            if not data.get("logo_base64"):
+                data["logo_base64"] = user.logo_base64
+            if not data.get("issuer_signature_base64"):
+                data["issuer_signature_base64"] = user.signature_base64
+            if not data.get("primary_color") or data.get("primary_color") == "#D4A017":
+                if user.primary_color:
+                    data["primary_color"] = user.primary_color
+
         new_doc = Document(
             user_id=creator_id,
             relationship_id=rel_id,
@@ -75,6 +88,14 @@ class DocumentService:
         await session.commit()
         await session.refresh(doc)
         return doc
+
+    @staticmethod
+    def apply_template_variables(body_text: str, variables: Dict[str, str]) -> str:
+        """Replace placeholders in document body."""
+        for key, value in variables.items():
+            placeholder = f"{{{{{key}}}}}"
+            body_text = body_text.replace(placeholder, str(value) if value else "")
+        return body_text
 
     @staticmethod
     async def handle_rejection(

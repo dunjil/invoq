@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AppHeader } from "@/components/app-header";
-import { AppFooter } from "@/components/app-footer";
+import { AppHeader } from "@/components/layout/app-header";
+import { AppFooter } from "@/components/layout/app-footer";
 import toast from "react-hot-toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -172,24 +172,7 @@ export default function ClientsPage() {
 
     return (
         <div className="min-h-screen flex flex-col bg-[#FAF9F6]">
-            <AppHeader backHref="/create" backLabel="Generator">
-                <div className="flex gap-2">
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setIsCreating(!isCreating)}
-                        className="text-xs h-8 border-[#E8E6E0] text-[#4A4A45] hover:bg-[#F5F3EE]"
-                    >
-                        {isCreating ? <X className="h-3.5 w-3.5 mr-1.5" /> : <Plus className="h-3.5 w-3.5 mr-1.5" />}
-                        {isCreating ? "Cancel" : "Add Client"}
-                    </Button>
-                    <Link href="/create">
-                        <Button size="sm" className="bg-[#1A1A18] hover:bg-[#333] text-white text-xs h-8">
-                            <Plus className="h-3.5 w-3.5 mr-1.5" /> New Document
-                        </Button>
-                    </Link>
-                </div>
-            </AppHeader>
+            <AppHeader />
 
             <main className="max-w-4xl mx-auto px-5 py-10 flex-1 w-full">
                 {isCreating && (
@@ -260,8 +243,17 @@ export default function ClientsPage() {
                 )}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-3xl font-light tracking-tight" style={{ fontFamily: "var(--font-heading)" }}>
+                        <h1 className="text-3xl font-light tracking-tight flex items-center gap-4" style={{ fontFamily: "var(--font-heading)" }}>
                             Saved Clients
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setIsCreating(!isCreating)}
+                                className="text-xs h-8 border-[#E8E6E0] text-[#4A4A45] hover:bg-[#F5F3EE] font-sans font-normal"
+                            >
+                                {isCreating ? <X className="h-3.5 w-3.5 mr-1.5" /> : <Plus className="h-3.5 w-3.5 mr-1.5" />}
+                                {isCreating ? "Cancel" : "Add Client"}
+                            </Button>
                         </h1>
                         <p className="text-sm text-[#8A8880] mt-1">Manage your professional network and address book.</p>
                     </div>

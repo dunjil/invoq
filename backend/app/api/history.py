@@ -11,22 +11,13 @@ from sqlalchemy import desc
 from app.db.session import get_session
 from app.db.models import User, Invoice, Quote, InvoiceComment, QuoteComment, Document, DocumentComment
 from app.api.deps import get_current_user
+
+# Schemas
+from app.schemas.generic import DocumentSummary
+
 from sqlalchemy import func
 
 router = APIRouter(prefix="/api/history", tags=["history"])
-
-class DocumentSummary(BaseModel):
-    id: str
-    token: str
-    type: str # "QUOTE" or "INVOICE"
-    document_number: str
-    document_date: str
-    to_name: str
-    total: float
-    currency_symbol: str
-    status: str
-    created_at: str
-    comment_count: int = 0
 
 class InvoiceDetail(BaseModel):
     pass
@@ -97,7 +88,7 @@ async def list_documents(
     for inv in invoices:
         documents.append({
             "id": inv.id,
-            "token": inv.tracked_link_token,
+            "token": inv.tracked_link_token or inv.tracked_token,
             "type": "INVOICE",
             "document_number": inv.invoice_number,
             "document_date": inv.invoice_date,
@@ -112,7 +103,7 @@ async def list_documents(
     for q in quotes:
         documents.append({
             "id": q.id,
-            "token": q.tracked_link_token,
+            "token": q.tracked_link_token or q.tracked_token,
             "type": "QUOTE",
             "document_number": q.quote_number or "Draft",
             "document_date": q.quote_date or "",

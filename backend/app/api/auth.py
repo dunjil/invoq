@@ -15,6 +15,11 @@ from app.config import settings
 from app.db.session import get_session
 from app.db.models import User, ActivityLog, Relationship, Quote, Invoice, Document
 from app.services.geoip_service import GeoIPService
+from app.services.relationship_service import RelationshipService
+
+# Schemas
+from app.schemas.auth import RegisterRequest, LoginRequest, AuthResponse, UserResponse
+
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -24,35 +29,6 @@ JWT_EXPIRY_HOURS = 72
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
-
-
-class RegisterRequest(BaseModel):
-    email: str = Field(..., max_length=255)
-    password: str = Field(..., min_length=6, max_length=128)
-    name: str = Field(default="", max_length=100)
-    claim_token: Optional[str] = None # V8: For invocation onboarding
-
-
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-
-class AuthResponse(BaseModel):
-    token: str
-    user: dict
-
-
-class UserResponse(BaseModel):
-    id: str
-    email: str
-    name: str
-    subscription_status: str
-    invoices_this_month: int
-    created_at: str
-
-
-# ── Helpers ──────────────────────────────────────────────────────────────────
 
 
 def hash_password(password: str) -> str:
@@ -117,41 +93,48 @@ async def register(
     await session.commit()
     await session.refresh(user)
 
-    # V8: Handle token claiming
+    # V8: Universal Claiming Logic
+    # REMOVED: Unverified email claiming. We now only claim relationships 
+    # if an explicit claim_token is provided during registration.
+    # Verification-based claiming should be triggered via a separate email verification flow.
+    # await RelationshipService.claim_relationship(session, user.id, user.email)
+
     if data.claim_token:
-        # Check Quotes, Invoices, Contracts
-        # Note: In a larger app, we'd have a specific table for tokens or a polymorphic lookup.
-        # For V8, we check all three document types.
+        # If a specific token was used, we also ensure THAT specific document is linked 
+        # even if it was sent to a slightly different email (or no email yet).
         
-        # 1. Check Quotes
+        # Check Quotes
         q_result = await session.execute(select(Quote).where(Quote.tracked_token == data.claim_token))
         quote = q_result.scalars().first()
-        if quote and quote.relationship_id:
-            rel_result = await session.execute(select(Relationship).where(Relationship.id == quote.relationship_id))
-            rel = rel_result.scalars().first()
-            if rel:
-                rel.recipient_id = user.id
-                quote.recipient_id = user.id
+        if quote:
+            quote.recipient_id = user.id
+            if quote.relationship_id:
+                rel_result = await session.execute(select(Relationship).where(Relationship.id == quote.relationship_id))
+                rel = rel_result.scalars().first()
+                if rel:
+                    rel.recipient_id = user.id
         
-        # 2. Check Invoices
+        # Check Invoices
         i_result = await session.execute(select(Invoice).where(Invoice.tracked_token == data.claim_token))
         inv = i_result.scalars().first()
-        if inv and inv.relationship_id:
-            rel_result = await session.execute(select(Relationship).where(Relationship.id == inv.relationship_id))
-            rel = rel_result.scalars().first()
-            if rel:
-                rel.recipient_id = user.id
-                inv.recipient_id = user.id
+        if inv:
+            inv.recipient_id = user.id
+            if inv.relationship_id:
+                rel_result = await session.execute(select(Relationship).where(Relationship.id == inv.relationship_id))
+                rel = rel_result.scalars().first()
+                if rel:
+                    rel.recipient_id = user.id
 
-        # 3. Check Documents (Contract, NDA, etc.)
+        # Check Documents
         c_result = await session.execute(select(Document).where(Document.tracked_link_token == data.claim_token))
         doc = c_result.scalars().first()
-        if doc and doc.relationship_id:
-            rel_result = await session.execute(select(Relationship).where(Relationship.id == doc.relationship_id))
-            rel = rel_result.scalars().first()
-            if rel:
-                rel.recipient_id = user.id
-                doc.recipient_id = user.id # NEW: documents now have recipient_id too for portfolio view
+        if doc:
+            doc.recipient_id = user.id
+            if doc.relationship_id:
+                rel_result = await session.execute(select(Relationship).where(Relationship.id == doc.relationship_id))
+                rel = rel_result.scalars().first()
+                if rel:
+                    rel.recipient_id = user.id
         
         await session.commit()
 

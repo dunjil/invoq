@@ -2,13 +2,24 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Eye, Download, Loader2, ChevronDown, PenTool } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { AppHeader } from "@/components/app-header";
-import { AppFooter } from "@/components/app-footer";
+import { AppHeader } from "@/components/layout/app-header";
+import { AppFooter } from "@/components/layout/app-footer";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import toast from "react-hot-toast";
+import { Package } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -33,6 +44,97 @@ export default function HistoryPage() {
     const [loading, setLoading] = useState(true);
     const [typeFilter, setTypeFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [previewHtml, setPreviewHtml] = useState("");
+    const [isFetchingPreview, setIsFetchingPreview] = useState(false);
+    const [downloadingId, setDownloadingId] = useState<string | null>(null);
+    const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+    const [selectedDocForTemplate, setSelectedDocForTemplate] = useState<DocumentSummary | null>(null);
+    const [templateName, setTemplateName] = useState("");
+    const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+
+    const handlePreview = async (doc: DocumentSummary) => {
+        setIsPreviewOpen(true);
+        setIsFetchingPreview(true);
+        setPreviewHtml("");
+
+        let endpoint = "";
+        const type = doc.type.toUpperCase();
+        if (['CONTRACT', 'NDA', 'MSA', 'SOW'].includes(type)) {
+            endpoint = `${API_URL}/api/contracts/track/${doc.token}`;
+        } else if (type === 'INVOICE') {
+            endpoint = `${API_URL}/api/invoice/track/${doc.token}`;
+        } else if (type === 'QUOTE') {
+            endpoint = `${API_URL}/api/quotes/track/${doc.token}`;
+        }
+
+        try {
+            const res = await fetch(endpoint, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success && data.rendered_html) {
+                setPreviewHtml(data.rendered_html);
+            } else {
+                setPreviewHtml("<div class='p-12 text-center text-[#8A8880]'>Failed to load preview.</div>");
+            }
+        } catch (err) {
+            setPreviewHtml("<div class='p-12 text-center text-[#8A8880]'>Error connecting to server.</div>");
+        } finally {
+            setIsFetchingPreview(false);
+        }
+    };
+
+    const handleDownload = async (doc: DocumentSummary, format: 'pdf' | 'docx' = 'pdf') => {
+        setDownloadingId(`${doc.id}_${format}`);
+
+        let endpoint = "";
+        const type = doc.type.toUpperCase();
+        if (['CONTRACT', 'NDA', 'MSA', 'SOW'].includes(type)) {
+            endpoint = `${API_URL}/api/contracts/${doc.token}/${format}`;
+        } else if (type === 'INVOICE') {
+            endpoint = `${API_URL}/api/invoice/${doc.token}/${format}`;
+        } else if (type === 'QUOTE') {
+            endpoint = `${API_URL}/api/quotes/${doc.token}/${format}`;
+        }
+
+        try {
+            const res = await fetch(endpoint, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success && data.download_url) {
+                window.open(`${API_URL}${data.download_url}`, '_blank');
+            }
+        } catch (err) {
+            console.error("Download failed", err);
+        } finally {
+            setDownloadingId(null);
+        }
+    };
+
+    const handleSaveAsTemplate = async () => {
+        if (!selectedDocForTemplate || !templateName) return;
+        setIsSavingTemplate(true);
+        try {
+            const res = await fetch(`${API_URL}/api/onboarding/templates/${selectedDocForTemplate.id}/save-as-template?template_name=${encodeURIComponent(templateName)}`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success("Document saved as template!");
+                setIsTemplateDialogOpen(false);
+                setTemplateName("");
+            } else {
+                toast.error(data.detail || "Failed to save template");
+            }
+        } catch (err) {
+            toast.error("Network error");
+        } finally {
+            setIsSavingTemplate(false);
+        }
+    };
 
     const filteredDocuments = documents.filter(doc => {
         const typeMatch = typeFilter === "all" || doc.type === typeFilter;
@@ -58,9 +160,7 @@ export default function HistoryPage() {
 
     return (
         <div className="min-h-screen flex flex-col">
-            <AppHeader>
-                <Link href="/create"><Button size="sm" className="bg-[#1A1A18] hover:bg-[#333] text-white text-sm"><Plus className="h-3.5 w-3.5 mr-1.5" /> New Invoice</Button></Link>
-            </AppHeader>
+            <AppHeader />
 
             <main className="max-w-3xl mx-auto px-5 py-10 animate-fade-in flex-1 w-full">
                 <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -131,77 +231,152 @@ export default function HistoryPage() {
                                 <div key={`${doc.type}-${doc.id}`} className="group relative">
                                     <Link href={linkHref} className="block">
                                         <Card className="hover:border-[#D5D3CC] transition-colors overflow-hidden">
-                                            <CardContent className="py-4 px-5">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 bg-[#F5F3EE] rounded-lg flex items-center justify-center shrink-0">
-                                                            <FileText className="h-4 w-4 text-[#4A4A45]" />
-                                                        </div>
-                                                        <div>
-                                                            <div className="flex flex-wrap items-center gap-2">
-                                                                <p className="text-sm font-medium font-mono">{doc.document_number}</p>
-                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase ${doc.type === "QUOTE" ? "bg-[#D4A017]/10 text-[#D4A017]" : ['CONTRACT', 'NDA', 'MSA'].includes(doc.type) ? "bg-purple-100 text-purple-700" : "bg-[#1A1A18]/5 text-[#1A1A18]"}`}>
-                                                                    {doc.type}
-                                                                </span>
-                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase ${statusColors[doc.status] || "bg-[#F5F3EE] text-[#8A8880]"}`}>
-                                                                    {doc.status}
-                                                                </span>
-                                                                {doc.comment_count > 0 && (
-                                                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold tracking-widest uppercase">
-                                                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                                                                        {doc.comment_count}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-xs text-[#8A8880] mt-0.5">{doc.to_name} · {doc.document_date}</p>
-                                                        </div>
+                                            <CardContent className="py-4 px-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                                <div className="flex items-start md:items-center gap-4">
+                                                    <div className="w-12 h-12 bg-[#F5F3EE] rounded-xl flex items-center justify-center shrink-0 border border-[#E8E6E0]/50 shadow-sm">
+                                                        <FileText className="h-5 w-5 text-[#8A8880]" />
                                                     </div>
-                                                    <div className="text-right shrink-0">
-                                                        {['CONTRACT', 'NDA', 'MSA'].includes(doc.type) ? (
-                                                            <p className="text-sm font-semibold font-mono text-gray-400">--</p>
-                                                        ) : (
-                                                            <p className="text-sm font-semibold font-mono">{doc.currency_symbol}{doc.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                                                        )}
-                                                        <p className="text-[10px] text-[#8A8880] font-mono mt-0.5">{new Date(doc.created_at).toLocaleDateString()}</p>
+                                                    <div>
+                                                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                            <p className="text-base font-medium font-mono text-[#1A1A18] leading-none">{doc.document_number}</p>
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase ${doc.type === "QUOTE" ? "bg-[#D4A017]/10 text-[#D4A017]" : ['CONTRACT', 'NDA', 'MSA'].includes(doc.type) ? "bg-purple-100 text-purple-700" : "bg-[#1A1A18]/5 text-[#1A1A18]"}`}>
+                                                                {doc.type}
+                                                            </span>
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase ${statusColors[doc.status] || "bg-[#F5F3EE] text-[#8A8880]"}`}>
+                                                                {doc.status}
+                                                            </span>
+                                                            {doc.comment_count > 0 && (
+                                                                <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold tracking-widest uppercase">
+                                                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                                                                    {doc.comment_count}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-sm text-[#8A8880] flex items-center gap-1.5">
+                                                            <span className="font-medium text-[#4A4A45]">{doc.to_name}</span>
+                                                            <span className="w-1 h-1 rounded-full bg-[#E8E6E0]" />
+                                                            <span>{new Date(doc.document_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                        </p>
                                                     </div>
                                                 </div>
 
-                                                {/* Mobile Actions */}
-                                                <div className="mt-4 pt-4 border-t border-[#F5F3EE] flex gap-2 md:hidden">
-                                                    <Link href={`/create?edit=${doc.token}`} className="flex-1">
-                                                        <Button variant="outline" size="sm" className="w-full h-9 text-xs border-[#E8E6E0] hover:border-[#D5D3CC] hover:bg-[#F5F3EE]">
-                                                            Edit
-                                                        </Button>
-                                                    </Link>
-                                                    <Link href={`/create?duplicate=${doc.type.toLowerCase()}_${doc.token}`} className="flex-1">
-                                                        <Button variant="outline" size="sm" className="w-full h-9 text-xs border-[#E8E6E0] hover:border-[#D5D3CC] hover:bg-[#F5F3EE]">
-                                                            Duplicate
-                                                        </Button>
-                                                    </Link>
+                                                <div className="flex items-center justify-between md:justify-end w-full md:w-auto gap-4 border-t md:border-t-0 pt-4 md:pt-0 mt-2 md:mt-0 border-[#F5F3EE]">
+                                                    <div className="text-left md:text-right shrink-0">
+                                                        {['CONTRACT', 'NDA', 'MSA'].includes(doc.type) ? (
+                                                            <p className="text-lg font-serif text-[#8A8880]">--</p>
+                                                        ) : (
+                                                            <p className="text-lg font-serif text-[#1A1A18]">{doc.currency_symbol}{doc.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                                        )}
+                                                        <p className="text-[10px] text-[#8A8880] font-mono mt-0.5 uppercase tracking-wider">Created {new Date(doc.created_at).toLocaleDateString()}</p>
+                                                    </div>
+
+                                                    {/* Consistently Styled "More" Dropdown to De-noise UI */}
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-[#8A8880] hover:text-[#1A1A18] hover:bg-[#F5F3EE]">
+                                                                <ChevronDown className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-48 bg-white border-[#E8E6E0] shadow-xl">
+                                                            <DropdownMenuItem onClick={(e) => { e.preventDefault(); handlePreview(doc); }} className="text-xs font-medium py-2 focus:bg-[#FAF9F6]">
+                                                                <Eye className="h-3.5 w-3.5 mr-2 text-[#8A8880]" /> Preview Document
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={(e) => { e.preventDefault(); handleDownload(doc, 'pdf'); }} className="text-xs font-medium py-2 focus:bg-[#FAF9F6]">
+                                                                <Download className="h-3.5 w-3.5 mr-2 text-[#8A8880]" /> Download PDF
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={(e) => { e.preventDefault(); handleDownload(doc, 'docx'); }} className="text-xs font-medium py-2 focus:bg-[#FAF9F6]">
+                                                                <FileText className="h-3.5 w-3.5 mr-2 text-[#8A8880]" /> Download Word (.docx)
+                                                            </DropdownMenuItem>
+                                                            <div className="h-px bg-[#F5F3EE] my-1" />
+                                                            <DropdownMenuItem asChild className="text-xs font-medium py-2 focus:bg-[#FAF9F6]">
+                                                                <Link href={`/create/${doc.type.toLowerCase()}?edit=${doc.token}`}>
+                                                                    <PenTool className="h-3.5 w-3.5 mr-2 text-[#8A8880]" /> Edit Details
+                                                                </Link>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem asChild className="text-xs font-medium py-2 focus:bg-[#FAF9F6]">
+                                                                <Link href={`/create/${doc.type.toLowerCase()}?duplicate=${doc.type.toLowerCase()}_${doc.token}`}>
+                                                                    <Plus className="h-3.5 w-3.5 mr-2 text-[#8A8880]" /> Duplicate Base
+                                                                </Link>
+                                                            </DropdownMenuItem>
+                                                            <div className="h-px bg-[#F5F3EE] my-1" />
+                                                            <DropdownMenuItem onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setSelectedDocForTemplate(doc);
+                                                                setTemplateName(doc.document_number);
+                                                                setIsTemplateDialogOpen(true);
+                                                            }} className="text-xs font-medium py-2 focus:bg-orange-50 text-[#D4A017]">
+                                                                <Package className="h-3.5 w-3.5 mr-2" /> Save as Template
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </div>
                                             </CardContent>
                                         </Card>
                                     </Link>
-                                    {/* Desktop Hover Actions */}
-                                    <div className="absolute right-[-150px] top-[50%] -translate-y-[50%] opacity-0 lg:group-hover:opacity-100 transition-opacity hidden lg:flex gap-2">
-                                        <Link href={`/create?edit=${doc.token}`}>
-                                            <Button variant="outline" size="sm" className="h-8 text-xs border-[#E8E6E0] hover:border-[#D5D3CC] hover:bg-[#F5F3EE]">
-                                                Edit
-                                            </Button>
-                                        </Link>
-                                        <Link href={`/create?duplicate=${doc.type.toLowerCase()}_${doc.token}`}>
-                                            <Button variant="outline" size="sm" className="h-8 text-xs border-[#E8E6E0] hover:border-[#D5D3CC] hover:bg-[#F5F3EE]">
-                                                Duplicate
-                                            </Button>
-                                        </Link>
-                                    </div>
                                 </div>
                             )
+
                         })}
                     </div>
                 )}
             </main>
             <AppFooter maxWidth="max-w-3xl" />
+
+            <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+                <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-[#FAF9F6] border-[#E8E6E0]">
+                    <DialogHeader className="p-4 border-b border-[#E8E6E0] bg-white">
+                        <DialogTitle className="text-sm font-bold uppercase tracking-widest text-[#4A4A45] flex items-center gap-2">
+                            <Eye className="h-4 w-4 text-[#D4A017]" /> Document Preview
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-auto p-6 md:p-10 scrollbar-hide">
+                        {isFetchingPreview ? (
+                            <div className="flex flex-col items-center justify-center h-64 gap-4">
+                                <Loader2 className="h-8 w-8 animate-spin text-[#D4A017]" />
+                                <p className="text-xs font-bold uppercase tracking-widest text-[#8A8880]">Reconstructing document...</p>
+                            </div>
+                        ) : (
+                            <div className="bg-white shadow-xl mx-auto rounded-lg overflow-hidden ring-1 ring-black/5 flex-1 flex flex-col" style={{ maxWidth: "800px", minHeight: "600px" }}>
+                                <iframe
+                                    srcDoc={previewHtml}
+                                    className="w-full flex-1 border-none"
+                                    title="Document Preview"
+                                />
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="flex items-center gap-2 text-[#D4A017] mb-1">
+                            <Package className="h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold">Save as Template</DialogTitle>
+                        </div>
+                        <p className="text-xs text-[#8A8880]">This will make the document available to use in onboarding bundles.</p>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-[#8A8880]">Template Name</Label>
+                            <Input
+                                placeholder="e.g. Standard NDA 2026"
+                                value={templateName}
+                                onChange={(e) => setTemplateName(e.target.value)}
+                                className="h-10 border-[#E8E6E0]"
+                            />
+                        </div>
+                        <Button
+                            onClick={handleSaveAsTemplate}
+                            disabled={isSavingTemplate || !templateName}
+                            className="w-full bg-[#1A1A18] hover:bg-[#333] h-10 rounded-full font-bold uppercase tracking-widest text-xs"
+                        >
+                            {isSavingTemplate ? "Saving..." : "Create Template"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/lib/auth";
+import Image from "next/image";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -191,8 +192,15 @@ export default function AdminDashboard() {
             <header className="border-b bg-white/80 backdrop-blur-lg sticky top-0 z-50">
                 <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Link href="/" className="text-2xl font-light tracking-tight" style={{ fontFamily: "var(--font-heading)" }}>
-                            Inv<span className="text-[#D4A017] font-medium">oq</span>
+                        <Link href="/">
+                            <div className="relative h-7 w-28">
+                                <Image
+                                    src="/images/invoq-logo-transparent.png"
+                                    alt="INVOQ"
+                                    fill
+                                    className="object-contain object-left"
+                                />
+                            </div>
                         </Link>
                         <span className="text-[10px] font-medium tracking-wider uppercase px-2 py-0.5 rounded bg-[#1A1A18] text-white">Admin</span>
                     </div>

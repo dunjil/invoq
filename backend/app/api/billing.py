@@ -13,23 +13,15 @@ from app.db.session import get_session
 from app.db.models import User
 from app.api.deps import get_current_user
 
+# Schemas
+from app.schemas.generic import CheckoutResponse, SubscriptionStatus
+
+
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 stripe.api_key = settings.stripe_secret_key if hasattr(settings, 'stripe_secret_key') else ""
 
 PRICE_ID = settings.stripe_price_id if hasattr(settings, 'stripe_price_id') else ""
-
-
-class CheckoutResponse(BaseModel):
-    url: Optional[str] = None
-    error: Optional[str] = None
-
-
-class SubscriptionStatus(BaseModel):
-    status: str  # "free" | "pro" | "cancelled"
-    invoices_this_month: int
-    monthly_limit: int
-    can_generate: bool
 
 
 @router.post("/checkout", response_model=CheckoutResponse)

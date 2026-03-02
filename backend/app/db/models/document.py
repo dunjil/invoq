@@ -1,121 +1,26 @@
-"""SQLModel database models (V8 Relationship Architecture)."""
-
 import uuid
 from datetime import datetime
 from typing import Optional
 from sqlmodel import SQLModel, Field, Column
 from sqlalchemy import JSON, Text
 
-class User(SQLModel, table=True):
-    """Registered user.
-    Types: company_admin, contractor, individual.
-    """
-    __tablename__ = "users"
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    email: str = Field(unique=True, index=True)
-    full_name: str = ""
-    name: str = "" # Alias for full_name
-    hashed_password: str
-    role: str = Field(default="contractor") # company_admin, contractor, individual
-
-    stripe_customer_id: Optional[str] = None
-    plan: str = Field(default="free") # free | pro
-    subscription_status: str = Field(default="free") # Legacy alias for plan
-    
-    invoices_this_month: int = 0
-    login_count: int = 0
-    last_login_at: Optional[datetime] = None
-
-    logo_base64: Optional[str] = Field(default=None, sa_column=Column(Text))
-    signature_base64: Optional[str] = Field(default=None, sa_column=Column(Text))
-    tax_region: Optional[str] = None
-    email_verified: bool = False
-
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-class BusinessProfile(SQLModel, table=True):
-    """Saved business profile for quick invoice creation."""
-    __tablename__ = "business_profiles"
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    user_id: str = Field(foreign_key="users.id", index=True)
-
-    label: str = "Default"
-    is_default: bool = Field(default=False)
-
-    name: str
-    address: Optional[str] = Field(default=None, sa_column=Column(Text))
-    email: Optional[str] = None
-    phone: Optional[str] = None
-
-    logo_base64: Optional[str] = Field(default=None, sa_column=Column(Text))
-    signature_base64: Optional[str] = Field(default=None, sa_column=Column(Text))
-    primary_color: str = "#D4A017"
-
-    default_currency: str = "USD"
-    default_currency_symbol: str = "$"
-    default_notes: Optional[str] = Field(default=None, sa_column=Column(Text))
-
-    watermark_enabled: bool = False
-    watermark_type: str = "text"
-    watermark_text: str = "CONFIDENTIAL"
-    watermark_image: Optional[str] = Field(default=None, sa_column=Column(Text))
-    watermark_color: str = "#6B6B63"
-    watermark_opacity: float = 0.15
-    watermark_rotation: float = -45
-    watermark_font_size: int = 60
-
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-class Company(SQLModel, table=True):
-    """Company profile linked to an admin user."""
-    __tablename__ = "companies"
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    admin_user_id: str = Field(foreign_key="users.id", index=True)
-
-    name: str
-    address: Optional[str] = Field(default=None, sa_column=Column(Text))
-    registration_number: Optional[str] = None
-    logo_base64: Optional[str] = Field(default=None, sa_column=Column(Text))
-    industry: Optional[str] = None
-
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-class Relationship(SQLModel, table=True):
-    """The core parent object connecting two parties."""
-    __tablename__ = "relationships"
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    initiator_id: str = Field(foreign_key="users.id", index=True)
-    recipient_id: Optional[str] = Field(default=None, foreign_key="users.id", index=True, nullable=True)
-    recipient_email: Optional[str] = Field(default=None, index=True)
-
-    # company_contractor | freelancer_individual | freelancer_company
-    type: str = Field(default="company_contractor") 
-    status: str = Field(default="active") # active, inactive, paused, ended
-    
-    start_date: Optional[str] = None
-    billing_rate: Optional[str] = None
-    billing_cycle: Optional[str] = None
-
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
 class Document(SQLModel, table=True):
     """Generated document record (Contract, NDA, MSA, SOW)."""
-    __tablename__ = "documents"
+    __tablename__ = "contracts"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     relationship_id: Optional[str] = Field(default=None, foreign_key="relationships.id", index=True)
-    user_id: str = Field(foreign_key="users.id", index=True) # The creator
+    user_id: str = Field(foreign_key="users.id", index=True)
     recipient_id: Optional[str] = Field(default=None, foreign_key="users.id", index=True)
     recipient_email: Optional[str] = Field(default=None, index=True)
+    contract_id: Optional[str] = Field(default=None, foreign_key="contracts.id", index=True)
 
-    type: str = Field(default="contract") # contract, nda, msa, sow
-    status: str = Field(default="draft") # draft, sent, viewed, needs_revision, approved, signed, bounced
+    type: str = Field(default="contract")
+    status: str = Field(default="draft")
     version: int = Field(default=1)
+    
+    is_template: bool = Field(default=False, index=True)
+    template_name: Optional[str] = None
 
     tracked_link_token: str = Field(default_factory=lambda: str(uuid.uuid4()), unique=True, index=True)
 
@@ -126,9 +31,8 @@ class Document(SQLModel, table=True):
     effective_date: Optional[str] = None
     expiry_date: Optional[str] = None
 
-    # Render fields
     contract_number: Optional[str] = None
-    document_number: Optional[str] = None # V8 alias
+    document_number: Optional[str] = None
     title: str = "Agreement"
     
     from_name: Optional[str] = None
@@ -136,14 +40,20 @@ class Document(SQLModel, table=True):
     
     body_text: str = Field(default="", sa_column=Column(Text))
     notes: Optional[str] = None
+    
+    logo_base64: Optional[str] = Field(default=None, sa_column=Column(Text))
+    primary_color: Optional[str] = Field(default="#D4A017")
+    include_issuer_signature: bool = Field(default=True)
+    include_recipient_signature: bool = Field(default=True)
+    watermark_enabled: bool = Field(default=False)
+    watermark_text: Optional[str] = Field(default="CONFIDENTIAL")
+    watermark_opacity: float = Field(default=0.1)
 
-    # Signatures
     issuer_signature_base64: Optional[str] = Field(default=None, sa_column=Column(Text))
     recipient_signature_base64: Optional[str] = Field(default=None, sa_column=Column(Text))
-    signature_data: Optional[str] = None # Legacy compat
-    client_signature_data: Optional[str] = None # Legacy compat
+    signature_data: Optional[str] = None
+    client_signature_data: Optional[str] = None
     
-    # Audit fields for signatures
     signer_ip_address: Optional[str] = None
     signer_user_agent: Optional[str] = None
 
@@ -154,11 +64,10 @@ class Document(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 class DocumentVersion(SQLModel, table=True):
-    """Version history for contracts and NDAs."""
     __tablename__ = "document_versions"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    document_id: str = Field(foreign_key="documents.id", index=True)
+    document_id: str = Field(foreign_key="contracts.id", index=True)
     version_number: int = Field(default=1)
     
     metadata_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
@@ -168,17 +77,16 @@ class DocumentVersion(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Signatory(SQLModel, table=True):
-    """Signatories for a document."""
     __tablename__ = "signatories"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    document_id: str = Field(foreign_key="documents.id", index=True)
+    document_id: str = Field(foreign_key="contracts.id", index=True)
     user_id: Optional[str] = Field(default=None, foreign_key="users.id", index=True, nullable=True)
     
     email: str = Field(index=True)
-    role: str = "signatory" # or witness
+    role: str = "signatory"
     order_index: int = 0
-    status: str = "pending" # pending, viewed, signed
+    status: str = "pending"
     
     viewed_at: Optional[datetime] = None
     signed_at: Optional[datetime] = None
@@ -188,18 +96,17 @@ class Signatory(SQLModel, table=True):
     tracked_token: str = Field(default_factory=lambda: str(uuid.uuid4()), unique=True, index=True)
 
 class DocumentComment(SQLModel, table=True):
-    """Comments or revision requests left on a document."""
-    __tablename__ = "document_comments"
+    __tablename__ = "contract_comments"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    document_id: str = Field(foreign_key="documents.id", index=True)
+    document_id: str = Field(foreign_key="contracts.id", index=True)
     author_id: str = Field(index=True)
     author_name: str = Field(default="Anonymous")
-    author_role: str # "freelancer" or "client"
+    author_role: str
     body: str = Field(sa_column=Column(Text))
     
-    element_reference: Optional[str] = None # Clause identifier
-    comment_type: str = "Question" # Question, Change Request, Clarification
+    element_reference: Optional[str] = None
+    comment_type: str = "Question"
     is_resolved: bool = False
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -208,30 +115,16 @@ class DocumentComment(SQLModel, table=True):
 Contract = Document
 ContractComment = DocumentComment
 
-class SavedClient(SQLModel, table=True):
-    """Legacy client record for quick picking."""
-    __tablename__ = "saved_clients"
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    user_id: str = Field(foreign_key="users.id", index=True)
-    
-    name: str
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    address: Optional[str] = Field(default=None, sa_column=Column(Text))
-    
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
 class Quote(SQLModel, table=True):
-    """Project-specific scope agreements."""
     __tablename__ = "quotes"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     relationship_id: Optional[str] = Field(default=None, foreign_key="relationships.id", index=True)
+    contract_id: Optional[str] = Field(default=None, foreign_key="contracts.id", index=True)
     issuer_id: Optional[str] = Field(default=None, foreign_key="users.id", index=True)
     recipient_id: Optional[str] = Field(default=None, foreign_key="users.id", index=True)
     recipient_email: Optional[str] = Field(default=None, index=True)
-    user_id: Optional[str] = Field(default=None, foreign_key="users.id", index=True) # Legacy alias for issuer_id
+    user_id: Optional[str] = Field(default=None, foreign_key="users.id", index=True)
 
     quote_number: Optional[str] = None
     quote_date: Optional[str] = None
@@ -239,7 +132,6 @@ class Quote(SQLModel, table=True):
     currency_symbol: str = "$"
     notes: Optional[str] = None
 
-    # Legacy fields for PDF rendering
     from_name: Optional[str] = None
     from_details: Optional[str] = Field(default=None, sa_column=Column(Text))
     to_name: Optional[str] = None
@@ -256,7 +148,6 @@ class Quote(SQLModel, table=True):
     rejection_category: Optional[str] = None
     editable_fields_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 
-    # Style/Signature
     primary_color: str = "#3498db"
     issuer_signature_base64: Optional[str] = Field(default=None, sa_column=Column(Text))
     recipient_signature_base64: Optional[str] = Field(default=None, sa_column=Column(Text))
@@ -265,7 +156,7 @@ class Quote(SQLModel, table=True):
     status: str = Field(default="draft")
     version: int = Field(default=1)
     tracked_token: str = Field(default_factory=lambda: str(uuid.uuid4()), unique=True, index=True)
-    tracked_link_token: Optional[str] = None # Alias for tracked_token for legacy code
+    tracked_link_token: str = Field(default_factory=lambda: str(uuid.uuid4()), index=True)
     extracted_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 
     sent_at: Optional[datetime] = None
@@ -274,7 +165,6 @@ class Quote(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class QuoteLineItem(SQLModel, table=True):
-    """Line item for a Quote."""
     __tablename__ = "quote_line_items"
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -287,32 +177,31 @@ class QuoteLineItem(SQLModel, table=True):
     total: float = 0.0
 
 class QuoteComment(SQLModel, table=True):
-    """Comments left on a quote."""
     __tablename__ = "quote_comments"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     quote_id: str = Field(foreign_key="quotes.id", index=True)
     author_id: str = Field(index=True)
     author_name: str = Field(default="Anonymous")
-    author_role: str # "freelancer" or "client"
+    author_role: str
     body: str = Field(sa_column=Column(Text))
     
-    element_reference: Optional[str] = None # Line item identifier
+    element_reference: Optional[str] = None
     comment_type: str = "Question"
     is_resolved: bool = False
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Invoice(SQLModel, table=True):
-    """Billing record linked to relationship."""
     __tablename__ = "invoices"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     relationship_id: Optional[str] = Field(default=None, foreign_key="relationships.id", index=True)
+    contract_id: Optional[str] = Field(default=None, foreign_key="contracts.id", index=True)
     issuer_id: Optional[str] = Field(default=None, foreign_key="users.id", index=True)
     recipient_id: Optional[str] = Field(default=None, foreign_key="users.id", index=True)
     recipient_email: Optional[str] = Field(default=None, index=True)
-    user_id: Optional[str] = Field(default=None, foreign_key="users.id", index=True) # Legacy alias for issuer_id
+    user_id: Optional[str] = Field(default=None, foreign_key="users.id", index=True)
     
     quote_id: Optional[str] = Field(default=None, foreign_key="quotes.id", index=True, nullable=True)
 
@@ -322,7 +211,6 @@ class Invoice(SQLModel, table=True):
     currency_symbol: str = "$"
     notes: Optional[str] = None
 
-    # Legacy fields for PDF rendering
     from_name: Optional[str] = None
     from_details: Optional[str] = Field(default=None, sa_column=Column(Text))
     to_name: Optional[str] = None
@@ -337,14 +225,15 @@ class Invoice(SQLModel, table=True):
     rejection_reason: Optional[str] = None
     rejection_category: Optional[str] = None
 
-    # Style/Signature
     primary_color: str = "#3498db"
     issuer_signature_base64: Optional[str] = Field(default=None, sa_column=Column(Text))
     recipient_signature_base64: Optional[str] = Field(default=None, sa_column=Column(Text))
     pdf_filename: Optional[str] = None
+    editable_fields_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 
     status: str = Field(default="draft")
     tracked_token: str = Field(default_factory=lambda: str(uuid.uuid4()), unique=True, index=True)
+    tracked_link_token: str = Field(default_factory=lambda: str(uuid.uuid4()), index=True)
 
     sent_at: Optional[datetime] = None
     viewed_at: Optional[datetime] = None
@@ -353,7 +242,6 @@ class Invoice(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class InvoiceLineItem(SQLModel, table=True):
-    """Line item for an Invoice."""
     __tablename__ = "invoice_line_items"
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -366,14 +254,13 @@ class InvoiceLineItem(SQLModel, table=True):
     total: float = 0.0
 
 class InvoiceComment(SQLModel, table=True):
-    """Comments left on an active invoice."""
     __tablename__ = "invoice_comments"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     invoice_id: str = Field(foreign_key="invoices.id", index=True)
     author_id: str = Field(index=True)
     author_name: str = Field(default="Anonymous")
-    author_role: str # "freelancer" or "client"
+    author_role: str
     body: str = Field(sa_column=Column(Text))
     
     element_reference: Optional[str] = None
@@ -383,7 +270,6 @@ class InvoiceComment(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class PaymentRecord(SQLModel, table=True):
-    """Confirmed payment event."""
     __tablename__ = "payment_records"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -396,65 +282,3 @@ class PaymentRecord(SQLModel, table=True):
     
     confirmed_by_id: str = Field(foreign_key="users.id")
     method_note: Optional[str] = None
-
-class ActivityLog(SQLModel, table=True):
-    """Tracks user activity."""
-    __tablename__ = "activity_logs"
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    user_id: Optional[str] = Field(default=None, index=True)
-    action: str = Field(index=True)
-    details: Optional[str] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    country_code: Optional[str] = None
-    country_name: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
-
-class ExtractionLog(SQLModel, table=True):
-    """Tracks AI extraction usage."""
-    __tablename__ = "extraction_logs"
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    user_id: Optional[str] = Field(default=None, index=True)
-    input_text: Optional[str] = Field(default=None, sa_column=Column(Text))
-    success: bool = True
-    error_message: Optional[str] = None
-    model: str = "claude-3-5-haiku-latest"
-    items_extracted: int = 0
-    response_time_ms: int = 0
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
-
-class TaxLedger(SQLModel, table=True):
-    """Tax position tracking."""
-    __tablename__ = "tax_ledgers"
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    user_id: str = Field(foreign_key="users.id", index=True)
-    
-    tax_year: str # e.g. "2026-2027"
-    total_earned: float = 0.0
-    total_tax_collected: float = 0.0
-
-    q1_q4_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
-    per_relationship_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
-
-class TrustProfile(SQLModel, table=True):
-    """Verified badge dimensions and metrics."""
-    __tablename__ = "trust_profiles"
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    user_id: str = Field(foreign_key="users.id", index=True, unique=True)
-    client_user_id: Optional[str] = None # Legacy alias for user_id
-    
-    invoice_accuracy: float = 0.0
-    on_time_rate: float = 0.0
-    avg_response_hours: float = 0.0
-    dispute_rate: float = 0.0
-    avg_relationship_days: float = 0.0
-    total_engagements: int = 0
-    
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
-
-# Alias for V8 logic
-ClientProfile = TrustProfile

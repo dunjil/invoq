@@ -18,30 +18,16 @@ from app.api.invoice import generate_invoice_html, InvoiceRequest, InvoiceAddres
 from app.services.email_service import EmailService
 from app.services.relationship_service import RelationshipService
 from app.db.models import User, Quote, QuoteLineItem, QuoteComment, Invoice, InvoiceLineItem, Relationship
+from app.services.usage import check_usage, record_usage, should_watermark
+from app.services.docx_service import DOCXService
+
+# Schemas
+from app.schemas.invoice import InvoiceItem, InvoiceAddress, InvoiceRequest
+from app.schemas.quote import QuoteCreateRequest, QuoteApproveRequest, QuoteRejectionRequest, CommentRequest, QuoteRejectRequest
+
 from weasyprint import HTML
 
 router = APIRouter(prefix="/api/quotes", tags=["quotes"])
-
-
-class QuoteCreateRequest(BaseModel):
-    title: str = "QUOTE"
-    quote_number: str
-    quote_date: str
-    due_date: Optional[str] = None
-    from_name: str
-    from_details: Optional[str] = None
-    to_name: str
-    to_details: Optional[str] = None
-    currency: str = "USD"
-    currency_symbol: str = "$"
-    subtotal: float = 0
-    tax_total: float = 0
-    total: float = 0
-    notes: Optional[str] = None
-    items: List[dict] = []
-    extracted_json: Optional[dict] = None
-    relationship_id: Optional[str] = None
-    recipient_email: Optional[str] = None
 
 
 @router.post("")
@@ -51,6 +37,12 @@ async def create_quote(
     session: AsyncSession = Depends(get_session),
 ):
     """Save a new quote and generate a tracking token."""
+    
+    # Check usage limits
+    allowed, reason = await check_usage(user, session)
+    if not allowed:
+        raise HTTPException(status_code=403, detail=reason)
+
     # V8: Resolve or create relationship
     rel_id = data.relationship_id
     if not rel_id and data.recipient_email:
@@ -63,6 +55,7 @@ async def create_quote(
         user_id=user.id,
         issuer_id=user.id,
         relationship_id=rel_id,
+        contract_id=data.contract_id,
         recipient_email=data.recipient_email,
         status="sent",
         quote_number=data.quote_number,
@@ -112,6 +105,9 @@ async def create_quote(
             token=new_quote.tracked_token
         )
 
+    # Record usage
+    await record_usage(user, session)
+
     return {
         "success": True,
         "quote_id": new_quote.id,
@@ -122,6 +118,7 @@ async def create_quote(
 @router.get("/track/{token}")
 async def get_quote_by_token(
     token: str,
+    user: Optional[User] = Depends(get_optional_user),
     session: AsyncSession = Depends(get_session),
 ):
     """Public endpoint for clients to view a quote by tracked link."""
@@ -140,10 +137,7 @@ async def get_quote_by_token(
         pass
 
     # Mark as viewed if first time AND not creator
-    if not quote.viewed_at:
-        # Note: In a real app, we'd check the session or JWT here.
-        # For now, let's keep it simple: if viewed_at is None, we mark it.
-        # To truly ignore the creator, we need to pass user into this public endpoint.
+    if not quote.viewed_at and (not user or user.id != quote.user_id):
         quote.viewed_at = datetime.utcnow()
         quote.status = "viewed"
         await session.commit()
@@ -152,10 +146,46 @@ async def get_quote_by_token(
     items_result = await session.execute(select(QuoteLineItem).where(QuoteLineItem.quote_id == quote.id))
     items = items_result.scalars().all()
 
+    # V8: Fetch Trust Metrics for the Issuer
+    from app.services.trust_service import TrustService
+    trust_profile = await TrustService.get_trust_profile(session, quote.user_id)
+    
+    # Calculate a simplified score for the badge
+    trust_score = round(
+        (trust_profile.invoice_accuracy * 0.4) + 
+        (100 if trust_profile.total_engagements > 5 else 80 if trust_profile.total_engagements > 0 else 50) * 0.1 + 
+        (100 - (trust_profile.dispute_rate * 10)) * 0.5
+    )
+
     return {
         "success": True,
         "quote": quote,
-        "items": items
+        "items": items,
+        "trust": {
+            "score": trust_score,
+            "total_engagements": trust_profile.total_engagements,
+            "invoice_accuracy": trust_profile.invoice_accuracy,
+            "on_time_rate": trust_profile.on_time_rate
+        },
+        "rendered_html": generate_invoice_html(InvoiceRequest(
+            title="QUOTE",
+            quote_number=quote.quote_number,
+            invoice_number=quote.quote_number,
+            invoice_date=quote.quote_date,
+            due_date=quote.due_date,
+            from_address=InvoiceAddress(name=quote.from_name or "", address_line1=""),
+            to_address=InvoiceAddress(name=quote.to_name or "", address_line1=""),
+            currency=quote.currency,
+            currency_symbol=quote.currency_symbol,
+            notes=quote.notes,
+            primary_color="#D4A017",
+            signature_data=quote.issuer_signature_base64,
+            client_signature_data=quote.recipient_signature_base64,
+            items=[
+                InvoiceItem(description=i.description, quantity=i.quantity, unit_price=i.unit_price, tax_rate=i.tax_rate) 
+                for i in items
+            ]
+        ))[0]
     }
 
 @router.get("/{token}/pdf")
@@ -195,12 +225,115 @@ async def download_dynamic_quote_pdf(
     html_content, _, _, _ = generate_invoice_html(data)
     pdf_bytes = HTML(string=html_content).write_pdf()
 
-    filename = f"Quote_{quote.quote_number}.pdf"
-    return Response(
-        content=pdf_bytes, 
-        media_type="application/pdf", 
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    file_id = str(uuid.uuid4())
+    filename = f"quote_{quote.quote_number.replace('/', '_')}_{file_id}.pdf"
+    filepath = os.path.join(settings.temp_file_dir, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(pdf_bytes)
+
+    return {
+        "success": True,
+        "download_url": f"/api/quotes/download/{filename}"
+    }
+
+
+@router.get("/{token}/docx")
+async def generate_quote_docx_by_token(
+    token: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Generate and return a DOCX for the quote."""
+    result = await session.execute(select(Quote).where(Quote.tracked_token == token))
+    quote = result.scalars().first()
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+        
+    # Prepare body text from items
+    items_result = await session.execute(select(QuoteLineItem).where(QuoteLineItem.quote_id == quote.id))
+    items = items_result.scalars().all()
+    
+    body = "### Line Items\n\n| Description | Qty | Price | Total |\n|---|---|---|---|\n"
+    for item in items:
+        body += f"| {item.description} | {item.quantity} | {item.unit_price} | {item.total} |\n"
+    
+    body += f"\n**Total: {quote.currency_symbol}{quote.total}**\n"
+    if quote.notes:
+        body += f"\n#### Notes\n{quote.notes}"
+
+    data = {
+        "title": "QUOTE",
+        "document_number": quote.quote_number,
+        "effective_date": quote.quote_date,
+        "from_name": quote.from_name,
+        "to_name": quote.to_name,
+        "body_text": body,
+        "primary_color": "#D4A017"
+    }
+    
+    docx_stream = DOCXService.generate_document(data)
+    
+    file_id = str(uuid.uuid4())
+    filename = f"quote_{quote.quote_number.replace('/', '_')}_{file_id}.docx"
+    filepath = os.path.join(settings.temp_file_dir, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(docx_stream.getbuffer())
+
+    return {
+        "success": True,
+        "download_url": f"/api/quotes/download/{filename}"
+    }
+
+
+@router.get("/download/{filename}")
+async def download_quote_pdf(filename: str):
+    """Download generated quote PDF."""
+    from fastapi.responses import FileResponse
+    if not filename or ".." in filename or "/" in filename:
+        return {"error": "Invalid filename"}
+
+    filepath = os.path.join(settings.temp_file_dir, filename)
+    if not os.path.exists(filepath):
+        return {"error": "File not found or expired"}
+
+    return FileResponse(
+        filepath,
+        media_type="application/pdf",
+        filename=filename,
     )
+
+@router.patch("/{token}/fields")
+async def update_quote_fields(
+    token: str,
+    data: dict,
+    session: AsyncSession = Depends(get_session),
+):
+    """Allow recipient to update specific fields marked as editable."""
+    result = await session.execute(select(Quote).where(Quote.tracked_token == token))
+    quote = result.scalars().first()
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+        
+    if not quote.editable_fields_json:
+        raise HTTPException(status_code=400, detail="No fields are marked as editable")
+        
+    # Update only fields present in editable_fields_json
+    current_fields = quote.editable_fields_json.copy()
+    for key, value in data.items():
+        if key in current_fields:
+            # Update the actual field on the quote object if it exists as a column
+            if hasattr(quote, key):
+                setattr(quote, key, value)
+            # Also track in the JSON for consistency
+            current_fields[key] = value
+            
+    quote.editable_fields_json = current_fields
+    await session.commit()
+    return {"success": True, "message": "Fields updated"}
+    return {"success": True, "message": "Fields updated"}
 
 @router.put("/{token}")
 async def update_quote(
@@ -250,10 +383,6 @@ async def update_quote(
     return {"success": True, "message": "Quote updated"}
 
 
-class QuoteApproveRequest(BaseModel):
-    signature_data: Optional[str] = None
-
-
 @router.post("/{token}/approve")
 async def approve_quote(
     token: str,
@@ -267,9 +396,6 @@ async def approve_quote(
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
         
-    if quote.status in ["approved", "converted"]:
-        return {"success": False, "error": "Quote already approved"}
-
     quote.status = "approved"
     quote.approved_at = datetime.utcnow()
     if data.signature_data:
@@ -277,6 +403,40 @@ async def approve_quote(
         quote.recipient_signature_base64 = data.signature_data
     
     await session.commit()
+
+@router.post("/{token}/reject")
+async def reject_quote(
+    token: str,
+    data: QuoteRejectionRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """Client formally rejects the quote with a structured reason."""
+    result = await session.execute(select(Quote).where(Quote.tracked_token == token))
+    quote = result.scalars().first()
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+        
+    if quote.status in ["approved", "converted"]:
+        return {"success": False, "error": "Cannot reject an already approved quote."}
+
+    quote.status = "needs_revision"
+    
+    comment = QuoteComment(
+        quote_id=quote.id,
+        author_name=data.author_name,
+        content=f"REJECTION [{data.reason_code.upper()}]: {data.details}",
+        is_from_creator=False,
+        created_at=datetime.utcnow()
+    )
+    session.add(comment)
+    await session.commit()
+
+    return {
+        "success": True,
+        "message": "Quote status updated to needs_revision.",
+        "status": quote.status
+    }
     
     # Auto-convert to Invoice
     inv_number = quote.quote_number.replace("QT", "INV") if "QT" in quote.quote_number else f"INV-{quote.quote_number}"
@@ -285,6 +445,7 @@ async def approve_quote(
         issuer_id=quote.issuer_id,
         recipient_id=quote.recipient_id,
         relationship_id=quote.relationship_id,
+        contract_id=quote.contract_id,
         quote_id=quote.id,
         status="draft",
         invoice_number=inv_number,
@@ -335,13 +496,6 @@ async def approve_quote(
     }
 
 
-class CommentRequest(BaseModel):
-    author_name: str
-    body: str
-    author_role: str = "client"
-    element_reference: Optional[str] = None # Line item/Clause link
-    comment_type: str = "Question" # Question, Change Request, Clarification
-
 @router.post("/{token}/comments")
 async def add_comment(
     token: str,
@@ -372,12 +526,6 @@ async def add_comment(
     await session.commit()
     return {"success": True, "message": "Comment added successfully."}
 
-
-class QuoteRejectRequest(BaseModel):
-    category: str = Field(..., description="Amount incorrect, Timeline wrong, Scope unclear, etc.")
-    reason: str
-    notes: Optional[str] = None
-    context_block: Optional[dict] = None
 
 @router.post("/{token}/reject")
 async def reject_quote(
@@ -430,6 +578,11 @@ async def request_review_quote(
     if not quote or quote.user_id != user.id:
         raise HTTPException(status_code=404, detail="Quote not found")
         
+    quote.status = "sent"
+    await session.commit()
+    return {"success": True, "message": "Review requested"}
+
+
     quote.status = "sent"
     await session.commit()
     return {"success": True, "message": "Review requested"}

@@ -12,22 +12,11 @@ from app.db.session import get_session
 from app.db.models import User, SavedClient
 from app.api.deps import get_current_user
 
+# Schemas
+from app.schemas.profile import SavedClientCreate, SavedClientResponse
+
+
 router = APIRouter(prefix="/api/clients/saved", tags=["saved-clients"])
-
-class SavedClientCreate(BaseModel):
-    name: str
-    email: Optional[str] = None
-    address: Optional[str] = None
-    phone: Optional[str] = None
-
-class SavedClientResponse(BaseModel):
-    id: str
-    name: str
-    email: Optional[str]
-    address: Optional[str]
-    phone: Optional[str]
-    created_at: str
-    updated_at: str
 
 @router.get("", response_model=List[SavedClientResponse])
 async def list_saved_clients(

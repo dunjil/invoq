@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/lib/auth";
+import Image from "next/image";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,9 +39,14 @@ export default function LoginPage() {
             <Card className="w-full max-w-sm animate-fade-in-scale">
                 <CardHeader className="text-center pb-2 pt-8">
                     <Link href="/">
-                        <h1 className="text-3xl font-light tracking-tight mb-1" style={{ fontFamily: "var(--font-heading)" }}>
-                            Inv<span className="text-[#D4A017] font-medium">oq</span>
-                        </h1>
+                        <div className="relative h-8 w-32 mx-auto">
+                            <Image
+                                src="/images/invoq-logo-transparent.png"
+                                alt="INVOQ"
+                                fill
+                                className="object-contain"
+                            />
+                        </div>
                     </Link>
                     <p className="text-sm text-[#4A4A45] mt-2">Sign in to your account</p>
                 </CardHeader>

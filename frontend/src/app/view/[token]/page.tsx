@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ArrowLeft, Clock, MessageSquare, Send, CheckCircle2, AlertCircle, FileText, Download, User, Calendar, ExternalLink, Mail, Check } from "lucide-react";
 import toast from "react-hot-toast";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/contexts/auth-context";
+import { RegistrationModal } from "@/components/features/registration-modal";
+import { TrustBadge } from "@/components/features/trust-badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -23,6 +27,7 @@ interface QuoteComment {
     content: string;
     is_from_creator: boolean;
     created_at: string;
+    element_reference?: string | null;
 }
 
 interface QuoteData {
@@ -37,6 +42,7 @@ interface QuoteData {
     total: number;
     currency_symbol: string;
     tracked_link_token?: string; // Added for the request review functionality
+    show_watermark?: boolean;
 }
 
 export default function QuotePage() {
@@ -56,33 +62,61 @@ export default function QuotePage() {
 
     const [isOwner, setIsOwner] = useState(false); // Placeholder for owner check
     const [isRequestingReview, setIsRequestingReview] = useState(false);
+    const [regModalOpen, setRegModalOpen] = useState(false);
+    const [selectedElement, setSelectedElement] = useState<string | null>(null);
+    const [editableFields, setEditableFields] = useState<Record<string, any>>({});
+    const [isUpdatingFields, setIsUpdatingFields] = useState(false);
+    const [showWatermark, setShowWatermark] = useState(false);
 
     // Signature Canvas Ref & State
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [hasSigned, setHasSigned] = useState(false);
 
-    useEffect(() => {
+    // V8: Trust & Rejection
+    const [trustData, setTrustData] = useState<any>(null);
+    const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [rejectReason, setRejectReason] = useState("pricing");
+    const [rejectDetails, setRejectDetails] = useState("");
+    const [isRejecting, setIsRejecting] = useState(false);
+
+    const fetchQuote = async () => {
         if (!token) return;
-        const fetchQuote = async () => {
-            try {
-                const res = await fetch(`${API_URL}/api/quotes/track/${token}`);
-                const data = await res.json();
-                if (data.success) {
-                    setQuote(data.quote);
-                    setItems(data.items || []);
-                    setComments(data.comments || []);
-                    setAuthorName(data.quote.to_name); // Default comment author to the recipient
-                    setIsOwner(data.quote.status === 'draft');
-                } else {
-                    setMessage(data.detail || "Unable to load document");
+        try {
+            const res = await fetch(`${API_URL}/api/quotes/track/${token}`);
+            const data = await res.json();
+            if (data.success) {
+                setQuote(data.quote);
+                setItems(data.items || []);
+                setComments(data.comments || []);
+                setEditableFields(data.quote.editable_fields_json || {});
+                setAuthorName(data.quote.to_name); // Default comment author to the recipient
+
+                if (authToken && data.quote.tracked_link_token) {
+                    // This block seems to be for something else, keeping it as is for now.
                 }
-            } catch (err: any) {
-                setMessage(err.message);
-            } finally {
-                setLoading(false);
+                setIsOwner(data.quote.status === 'draft');
+                setShowWatermark(data.show_watermark || false);
+
+                if (data.trust) {
+                    setTrustData(data.trust);
+                }
+
+                // V8: Prompt registration if not logged in
+                if (!authToken) {
+                    setRegModalOpen(true);
+                }
+            } else {
+                setMessage(data.detail || "Unable to load document");
             }
-        };
+        } catch (err: any) {
+            setMessage(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchQuote();
     }, [token]);
 
@@ -170,17 +204,52 @@ export default function QuotePage() {
         }
     };
 
+    const handleReject = async () => {
+        if (!rejectDetails.trim() || !authorName.trim()) {
+            toast.error("Please provide your name and some details for the rejection.");
+            return;
+        }
+
+        setIsRejecting(true);
+        try {
+            const res = await fetch(`${API_URL}/api/quotes/${token}/reject`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    reason_code: rejectReason,
+                    details: rejectDetails.trim(),
+                    author_name: authorName.trim()
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success("Feedback sent. Quote status updated.");
+                setQuote((prev) => prev ? { ...prev, status: "needs_revision" } : null);
+                setRejectModalOpen(false);
+                // Refresh comments to show the rejection
+                fetchQuote();
+            } else {
+                toast.error(data.error || "Failed to send rejection");
+            }
+        } catch {
+            toast.error("Network error");
+        } finally {
+            setIsRejecting(false);
+        }
+    };
+
     const handlePostComment = async () => {
-        if (!newComment.trim() || !authorName.trim()) return;
+        if (!newComment.trim() || !authorName.trim() || !quote?.tracked_link_token) return;
         setPostingComment(true);
         try {
-            const res = await fetch(`${API_URL}/api/quotes/${token}/comments`, {
+            const res = await fetch(`${API_URL}/api/quotes/${quote.tracked_link_token}/comments`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     author_name: authorName.trim(),
                     body: newComment.trim(),
-                    author_role: "client"
+                    author_role: "client",
+                    element_reference: selectedElement
                 })
             });
             const data = await res.json();
@@ -190,7 +259,8 @@ export default function QuotePage() {
                     author_name: authorName.trim(),
                     content: newComment.trim(),
                     is_from_creator: false,
-                    created_at: new Date().toISOString()
+                    created_at: new Date().toISOString(),
+                    element_reference: selectedElement
                 }]);
                 setNewComment("");
                 toast.success("Comment posted");
@@ -237,6 +307,29 @@ export default function QuotePage() {
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
     };
 
+    const handleUpdateFields = async () => {
+        if (!quote) return;
+        setIsUpdatingFields(true);
+        try {
+            const res = await fetch(`${API_URL}/api/quotes/${token}/fields`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(editableFields)
+            });
+            if (res.ok) {
+                toast.success("Changes applied to quote");
+                // Refresh data
+                fetchQuote();
+            } else {
+                toast.error("Failed to update fields");
+            }
+        } catch {
+            toast.error("Network error");
+        } finally {
+            setIsUpdatingFields(false);
+        }
+    };
+
     if (loading) return <div className="flex justify-center items-center min-h-screen bg-[#FAF9F6]">Loading...</div>;
     if (message || !quote) return <div className="flex justify-center items-center min-h-screen font-mono text-red-500 bg-[#FAF9F6]">{message || "Document not found"}</div>;
 
@@ -254,10 +347,20 @@ export default function QuotePage() {
                     </span>
                 </div>
 
-                {/* Header */}
                 <div className="mb-10 pt-4 flex flex-col sm:flex-row justify-between items-start gap-4">
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl font-light text-[#D4A017] mb-2 tracking-wide font-serif">QUOTE</h1>
+                    <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                            <h1 className="text-2xl sm:text-3xl font-light text-[#D4A017] tracking-wide font-serif uppercase">Quote</h1>
+                            {trustData && (
+                                <TrustBadge
+                                    score={trustData.score}
+                                    totalEngagements={trustData.total_engagements}
+                                    invoiceAccuracy={trustData.invoice_accuracy}
+                                    onTimeRate={trustData.on_time_rate}
+                                    size="sm"
+                                />
+                            )}
+                        </div>
                         <div className="text-xs sm:text-sm text-[#8A8880] space-y-1">
                             <p><strong>Quote #:</strong> {quote.quote_number}</p>
                             <p><strong>Date:</strong> {quote.quote_date}</p>
@@ -279,7 +382,15 @@ export default function QuotePage() {
                     </div>
                     <div>
                         <h3 className="text-[10px] font-semibold text-[#D4A017] uppercase tracking-wider mb-2 border-b border-[#E8E6E0] pb-1">Quote For</h3>
-                        <p className="font-medium text-[#1A1A18] whitespace-pre-wrap">{quote.to_name}</p>
+                        {editableFields.to_name !== undefined ? (
+                            <input
+                                className="font-medium text-[#1A1A18] w-full bg-orange-50/50 border-none focus:ring-1 focus:ring-[#D4A017] rounded px-1"
+                                value={editableFields.to_name}
+                                onChange={(e) => setEditableFields({ ...editableFields, to_name: e.target.value })}
+                            />
+                        ) : (
+                            <p className="font-medium text-[#1A1A18] whitespace-pre-wrap">{quote.to_name}</p>
+                        )}
                     </div>
                 </div>
 
@@ -305,6 +416,20 @@ export default function QuotePage() {
                     </div>
                 )}
 
+                {Object.keys(editableFields).length > 0 && !isOwner && (
+                    <div className="mb-8 p-4 bg-orange-50 border border-orange-200 rounded-xl flex items-center justify-between">
+                        <p className="text-sm text-orange-800">You can adjust some terms before signing.</p>
+                        <Button
+                            onClick={handleUpdateFields}
+                            disabled={isUpdatingFields}
+                            size="sm"
+                            className="bg-orange-500 hover:bg-orange-600 text-white"
+                        >
+                            {isUpdatingFields ? "Applying..." : "Apply Changes"}
+                        </Button>
+                    </div>
+                )}
+
                 {/* Line Items */}
                 <div className="mb-10 overflow-x-auto">
                     <table className="w-full text-sm">
@@ -318,8 +443,22 @@ export default function QuotePage() {
                         </thead>
                         <tbody className="divide-y divide-[#E8E6E0]/50">
                             {items.map((item, i) => (
-                                <tr key={i} className="group hover:bg-black/[0.01] transition-colors">
-                                    <td className="py-4 text-[#4A4A45]">{item.description}</td>
+                                <tr
+                                    key={i}
+                                    onClick={() => setSelectedElement(selectedElement === `item_${i}` ? null : `item_${i}`)}
+                                    className={`group hover:bg-black/[0.01] transition-colors cursor-pointer ${selectedElement === `item_${i}` ? 'bg-[#FAF9F6] ring-1 ring-[#D4A017]/20 relative z-10 scale-[1.01] shadow-sm' : ''}`}
+                                >
+                                    <td className="py-4 text-[#4A4A45]">
+                                        <div className="flex items-center gap-2">
+                                            {item.description}
+                                            {comments.some(c => c.element_reference === `item_${i}`) && (
+                                                <div className="flex items-center gap-1 text-[10px] bg-[#D4A017]/10 text-[#D4A017] px-1.5 py-0.5 rounded-full font-bold">
+                                                    <MessageSquare className="h-2.5 w-2.5" />
+                                                    {comments.filter(c => c.element_reference === `item_${i}`).length}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="py-4 text-center text-[#8A8880]">{item.quantity}</td>
                                     <td className="py-4 text-right text-[#8A8880]">{quote.currency_symbol}{item.unit_price.toFixed(2)}</td>
                                     <td className="py-4 text-right font-medium text-[#1A1A18]">{quote.currency_symbol}{item.total.toFixed(2)}</td>
@@ -344,14 +483,22 @@ export default function QuotePage() {
                 </div>
 
                 {/* Action Button */}
-                {quote.status !== "converted" && quote.status !== "approved" && (
-                    <div className="flex justify-center border-t border-[#E8E6E0] pt-10">
+                {quote.status !== "converted" && quote.status !== "approved" && quote.status !== "needs_revision" && (
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 border-t border-[#E8E6E0] pt-10">
                         <Button
                             size="lg"
-                            className="w-full max-w-sm h-14 text-base font-medium shadow-xl shadow-[#D4A017]/10 bg-[#D4A017] hover:bg-[#B8860B] hover:-translate-y-0.5 transition-all duration-200 text-white"
+                            className="w-full sm:w-2/3 h-14 text-base font-medium shadow-xl shadow-[#D4A017]/10 bg-[#D4A017] hover:bg-[#B8860B] hover:-translate-y-0.5 transition-all duration-200 text-white"
                             onClick={() => setSignModalOpen(true)}
                         >
                             Approve & Sign Quote
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            className="w-full sm:w-1/3 h-14 text-base font-medium border-[#E8E6E0] text-[#8A8880] hover:text-[#1A1A18] hover:bg-[#FAF9F6]"
+                            onClick={() => setRejectModalOpen(true)}
+                        >
+                            Request Changes
                         </Button>
                     </div>
                 )}
@@ -363,29 +510,52 @@ export default function QuotePage() {
                 )}
             </div>
 
+            <RegistrationModal
+                open={regModalOpen}
+                onOpenChange={setRegModalOpen}
+                claimToken={token as string}
+                onSuccess={() => {
+                    // Auth state will update automatically via useAuth
+                    // We might need to refresh quote data to see the new recipient_id association
+                }}
+            />
+
             {/* Comments Thread */}
             <div className="max-w-3xl mx-auto mt-4 sm:mt-8 bg-white shadow-lg rounded-none sm:rounded-xl ring-1 ring-black/[0.04] p-6 sm:p-8">
                 <h3 className="text-base sm:text-lg font-medium text-[#1A1A18] mb-6 font-serif tracking-wide border-b border-[#E8E6E0] pb-2">Discussion & Revision</h3>
 
                 <div className="space-y-6 mb-8">
-                    {comments.length === 0 ? (
-                        <p className="text-sm text-[#8A8880] text-center italic py-4">No comments yet. Have a question or request a change?</p>
+                    {comments.filter(c => selectedElement ? c.element_reference === selectedElement : !c.element_reference).length === 0 ? (
+                        <p className="text-sm text-[#8A8880] text-center italic py-4">
+                            {selectedElement
+                                ? "No comments on this item yet."
+                                : "No general comments yet. Click on a line item to discuss specifics."}
+                        </p>
                     ) : (
-                        comments.map((c, i) => (
-                            <div key={i} className={`flex flex-col ${c.is_from_creator ? 'items-end' : 'items-start'}`}>
-                                <div className={`max-w-[85%] rounded-2xl px-5 py-3 ${c.is_from_creator ? 'bg-[#F2EFE9] text-[#1A1A18] rounded-tr-sm' : 'bg-[#1A1A18] text-white rounded-tl-sm'}`}>
-                                    <div className="flex items-baseline justify-between gap-4 mb-1">
-                                        <span className={`text-[11px] font-semibold uppercase tracking-wider ${c.is_from_creator ? 'text-[#8A8880]' : 'text-[#E8E6E0]'}`}>{c.author_name}</span>
-                                        <span className={`text-[10px] ${c.is_from_creator ? 'text-[#8A8880]' : 'text-[#A09E96]'}`}>{new Date(c.created_at).toLocaleDateString()}</span>
+                        comments
+                            .filter(c => selectedElement ? c.element_reference === selectedElement : !c.element_reference)
+                            .map((c, i) => (
+                                <div key={i} className={`flex flex-col ${c.is_from_creator ? 'items-end' : 'items-start'}`}>
+                                    <div className={`max-w-[85%] rounded-2xl px-5 py-3 ${c.is_from_creator ? 'bg-[#F2EFE9] text-[#1A1A18] rounded-tr-sm' : 'bg-[#1A1A18] text-white rounded-tl-sm'}`}>
+                                        <div className="flex items-baseline justify-between gap-4 mb-1">
+                                            <span className={`text-[11px] font-semibold uppercase tracking-wider ${c.is_from_creator ? 'text-[#8A8880]' : 'text-[#E8E6E0]'}`}>{c.author_name}</span>
+                                            <span className={`text-[10px] ${c.is_from_creator ? 'text-[#8A8880]' : 'text-[#A09E96]'}`}>{new Date(c.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{c.content}</p>
                                     </div>
-                                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{c.content}</p>
                                 </div>
-                            </div>
-                        ))
+                            ))
                     )}
                 </div>
 
-                <div className="bg-[#FAF9F6] p-4 rounded-xl border border-[#E8E6E0]">
+                <div className="bg-[#FAF9F6] p-4 rounded-xl border border-[#E8E6E0] relative">
+                    {selectedElement && (
+                        <div className="absolute -top-3 left-4 bg-[#D4A017] text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1.5 shadow-sm">
+                            <MessageSquare className="h-2.5 w-2.5" />
+                            Commenting on: {items[parseInt(selectedElement.split('_')[1])].description}
+                            <button onClick={() => setSelectedElement(null)} className="ml-1 hover:text-white/80">×</button>
+                        </div>
+                    )}
                     <div className="mb-3">
                         <label className="text-xs font-semibold text-[#8A8880] uppercase tracking-wider block mb-1">Your Name</label>
                         <input
@@ -462,6 +632,64 @@ export default function QuotePage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Structured Rejection Modal */}
+            <Dialog open={rejectModalOpen} onOpenChange={setRejectModalOpen}>
+                <DialogContent className="sm:max-w-md bg-white p-0 overflow-hidden border-[#E8E6E0]">
+                    <DialogHeader className="p-6 bg-[#FAF9F6] border-b border-[#E8E6E0]">
+                        <DialogTitle className="text-xl font-medium text-[#1A1A18]">Request Revisions</DialogTitle>
+                    </DialogHeader>
+                    <div className="p-8 space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-[#8A8880]">Why are we rejecting this?</label>
+                            <Select value={rejectReason} onValueChange={setRejectReason}>
+                                <SelectTrigger className="w-full bg-[#FAF9F6]">
+                                    <SelectValue placeholder="Select a reason" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white">
+                                    <SelectItem value="pricing">Pricing/Budget Mismatch</SelectItem>
+                                    <SelectItem value="timeline">Timeline/Deadline Issue</SelectItem>
+                                    <SelectItem value="scope">Scope of Work Unclear</SelectItem>
+                                    <SelectItem value="typo">Errors/Typos in Document</SelectItem>
+                                    <SelectItem value="other">Other Reason</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-[#8A8880]">Feedback Details</label>
+                            <Textarea
+                                placeholder="Tell the contractor what needs to change..."
+                                value={rejectDetails}
+                                onChange={(e) => setRejectDetails(e.target.value)}
+                                className="h-32 bg-[#FAF9F6]"
+                            />
+                        </div>
+
+                        <p className="text-xs text-[#8A8880] italic leading-relaxed">
+                            Formally rejecting this document will mark it as "Needs Revision" and alert the sender.
+                        </p>
+                    </div>
+                    <DialogFooter className="p-6 bg-[#FAF9F6] border-t border-[#E8E6E0] flex gap-3">
+                        <Button variant="outline" className="flex-1 border-[#D5D3CC] text-[#4A4A45]" onClick={() => setRejectModalOpen(false)}>Cancel</Button>
+                        <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white" onClick={handleReject} disabled={isRejecting}>
+                            {isRejecting ? "Sending..." : "Send Rejection"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Invoq Watermark Banner for Free Tier */}
+            {showWatermark && (
+                <div className="fixed bottom-0 left-0 right-0 bg-[#1A1A18] text-white text-center py-3 z-50 flex items-center justify-center gap-3 px-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+                    <span className="text-sm font-medium">Powered by INVOQ</span>
+                    <span className="text-[#8A8880] text-sm hidden sm:inline">—</span>
+                    <span className="text-sm text-[#D8D5CE]">Create professional documents that get you paid.</span>
+                    <Button variant="outline" size="sm" className="ml-2 h-8 bg-transparent border-[#4A4A45] hover:bg-white hover:text-[#1A1A18]" onClick={() => window.open('/', '_blank')}>
+                        Build your own
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }

@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func
-from app.db.models import Relationship, Document, Invoice, PaymentRecord, TaxLedger, TrustProfile
+from app.db.models import Relationship, Document, Invoice, PaymentRecord, TaxLedger, TrustProfile, ActivityLog
 
 class PortfolioService:
     @staticmethod
@@ -55,6 +55,24 @@ class PortfolioService:
         )
         latest_ledger = tax_result.scalars().first()
         
+        # 6. Recent Activity (Activity Logs)
+        activity_result = await session.execute(
+            select(ActivityLog)
+            .where(ActivityLog.user_id == user_id)
+            .order_by(ActivityLog.created_at.desc())
+            .limit(5)
+        )
+        recent_activity = activity_result.scalars().all()
+        
+        # 7. Recent Documents
+        docs_result = await session.execute(
+            select(Document)
+            .where(Document.user_id == user_id)
+            .order_by(Document.created_at.desc())
+            .limit(5)
+        )
+        recent_documents = docs_result.scalars().all()
+
         return {
             "active_relationships": active_rels_count,
             "documents_awaiting_action": docs_awaiting_user + docs_needing_revision,
@@ -63,5 +81,23 @@ class PortfolioService:
             "tax_position": {
                 "total_earned": latest_ledger.total_earned if latest_ledger else 0.0,
                 "estimated_tax": (latest_ledger.total_earned * 0.2) if latest_ledger else 0.0 # Placeholder logic
-            }
+            },
+            "recent_activity": [
+                {
+                    "action": log.action,
+                    "details": log.details,
+                    "timestamp": log.created_at.isoformat()
+                } for log in recent_activity
+            ],
+            "recent_documents": [
+                {
+                    "id": log.id,
+                    "type": log.type,
+                    "document_number": log.document_number,
+                    "status": log.status,
+                    "to_name": log.to_name,
+                    "token": log.tracked_link_token,
+                    "created_at": log.created_at.isoformat()
+                } for log in recent_documents
+            ]
         }

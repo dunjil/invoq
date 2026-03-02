@@ -67,3 +67,18 @@ class TrustService:
         profile.last_updated = datetime.utcnow()
         
         await session.commit()
+
+    @staticmethod
+    async def get_trust_profile(session: AsyncSession, user_id: str) -> TrustProfile:
+        """Retrieves the trust profile for a user, creating it if it doesn't exist."""
+        result = await session.execute(select(TrustProfile).where(TrustProfile.user_id == user_id))
+        profile = result.scalars().first()
+        
+        if not profile:
+            profile = TrustProfile(user_id=user_id)
+            session.add(profile)
+            await session.flush()
+            await session.commit()
+            await session.refresh(profile)
+            
+        return profile

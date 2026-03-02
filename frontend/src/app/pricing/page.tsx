@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, Crown, Loader2 } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
-import { AppFooter } from "@/components/app-footer";
+import { AppHeader } from "@/components/layout/app-header";
+import { AppFooter } from "@/components/layout/app-footer";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -103,9 +103,12 @@ export default function PricingPage() {
                 </div>
 
                 {status && user && (
-                    <p className="text-center mt-10 text-sm text-[#8A8880]">
-                        This month: <span className="font-mono font-medium text-[#1A1A18]">{status.invoices_this_month}</span> / {status.monthly_limit} invoices used
-                    </p>
+                    <div className="text-center mt-10">
+                        <span className="text-[#4A4A45]">Current Plan: </span>
+                        <span className="text-sm">
+                            <span className="font-semibold text-[#1A1A18]">Free Tier</span> · Unlimited invoices
+                        </span>
+                    </div>
                 )}
             </main>
             <AppFooter maxWidth="max-w-3xl" />
